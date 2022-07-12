@@ -1,22 +1,13 @@
-use std::{fs::File, io::Read, path::Path};
+use std::path::Path;
 
 use json::JsonValue;
 
-use crate::models::{Endpoint, Method};
+use crate::{models::{Endpoint, Method}, utils::read_file_to_string_or_err};
 
 use super::ParsingError;
 
 fn parse_openapi_json(path: &Path) -> Result<Vec<Endpoint>, ParsingError> {
-    let mut file = match File::open(&path) {
-        Ok(file) => file,
-        Err(_) => return Err(ParsingError::ProblemOpeningFile),
-    };
-
-    let mut json_string = String::new();
-    match file.read_to_string(&mut json_string) {
-        Ok(_) => parse_json_doc(&json_string),
-        Err(_) => Err(ParsingError::ProblemOpeningFile),
-    }
+    parse_json_doc(&read_file_to_string_or_err(path, ParsingError::ProblemOpeningFile)?)
 }
 
 fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, ParsingError> {
