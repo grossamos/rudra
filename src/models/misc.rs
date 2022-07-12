@@ -1,6 +1,6 @@
 #[derive(Debug)]
-#[derive(PartialEq)]
 #[derive(Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Method {
     GET,
     PUT,

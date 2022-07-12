@@ -1,6 +1,8 @@
 use super::misc::Method;
 
 #[derive(Debug)]
+#[derive(Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Endpoint {
     pub method: Method,
     pub path: String,
@@ -12,3 +14,4 @@ impl Endpoint {
         Endpoint { method, path, status_code }
     }
 }
+
