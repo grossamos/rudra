@@ -1,5 +1,6 @@
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Clone)]
 pub enum Method {
     GET,
     PUT,
@@ -13,7 +14,7 @@ pub enum Method {
 
 impl Method {
     pub fn from_str(method_str: &str) -> Option<Method> {
-        match method_str {
+        match method_str.to_uppercase().as_str() {
             "GET" => Some(Method::GET),
             "PUT" => Some(Method::PUT),
             "POST" => Some(Method::POST),

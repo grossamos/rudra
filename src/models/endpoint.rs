@@ -1,5 +1,6 @@
 use super::misc::Method;
 
+#[derive(Debug)]
 pub struct Endpoint {
     pub method: Method,
     pub path: String,
