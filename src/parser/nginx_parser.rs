@@ -4,7 +4,11 @@ use crate::{models::{Endpoint, Method}, parser::ParsingError};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-fn parses_full_nginx_access_log(path: &Path) -> Result<Vec<Endpoint>, ParsingError> {
+pub fn parse_nginx_access_log() -> Result<Vec<Endpoint>, ParsingError> {
+    parse_access_log(Path::new("/var/log/nginx/access.log"))
+}
+
+fn parse_access_log(path: &Path) -> Result<Vec<Endpoint>, ParsingError> {
     let mut endpoints = Vec::new();
     let reader = match File::open(path) {
         Ok(file) => BufReader::new(file),
@@ -70,7 +74,7 @@ fn parse_nginx_line(line: &str) -> Result<Endpoint, ParsingError> {
 mod test {
     use std::path::Path;
 
-    use crate::{parser::nginx_parser::{parse_nginx_line, parses_full_nginx_access_log}, models::Method};
+    use crate::{parser::nginx_parser::{parse_nginx_line, parse_access_log}, models::Method};
 
     #[test]
     fn parses_correct_status() {
@@ -94,6 +98,6 @@ mod test {
     #[test]
     fn parses_full_access_log() {
         let path = Path::new("./test/resource/access.log");
-        assert_eq!(parses_full_nginx_access_log(&path).unwrap().len(), 9);
+        assert_eq!(parse_access_log(&path).unwrap().len(), 9);
     }
 }

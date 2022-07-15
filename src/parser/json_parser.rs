@@ -6,7 +6,7 @@ use crate::{models::{Endpoint, Method}, utils::read_file_to_string_or_err};
 
 use super::ParsingError;
 
-fn parse_openapi_json(path: &Path) -> Result<Vec<Endpoint>, ParsingError> {
+pub fn parse_openapi_json(path: &Path) -> Result<Vec<Endpoint>, ParsingError> {
     parse_json_doc(&read_file_to_string_or_err(path, ParsingError::ProblemOpeningFile)?)
 }
 

@@ -15,3 +15,17 @@ impl Endpoint {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::models::Method;
+
+    use super::Endpoint;
+
+    #[test]
+    fn equality_checks_work() {
+        let endpoint_a = Endpoint::new(Method::GET, String::from("/test"), 200);
+        let endpoint_b = Endpoint::new(Method::GET, String::from("/test"), 200);
+
+        assert!(endpoint_a == endpoint_b);
+    }
+}
