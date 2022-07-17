@@ -1,0 +1,15 @@
+name: 'Rudra'
+description: 'Openapi based test coverage for integration tests'
+inputs:
+  stage:
+    description: 'Preperation or evaluation mode'
+    required: true
+    default: 'evaluation'
+runs:
+  using: "composite"
+  steps:
+    - run: echo Hello World!
+      shell: bash
+
+    - run: echo Mode ${{inputs.stage}}
+      shell: bash
