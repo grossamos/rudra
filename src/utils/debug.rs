@@ -3,7 +3,7 @@ use std::{fmt::Display, process};
 use crate::config::RudraConfig;
 
 pub fn print_debug_message<T: Display>(config: &RudraConfig, debug_message: T) {
-    if config.is_debug() {
+    if config.debug {
         println!("{}", debug_message);
     }
 }

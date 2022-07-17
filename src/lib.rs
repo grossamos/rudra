@@ -1,4 +1,4 @@
-use std::{process::Command, path::Path};
+use std::process::Command;
 
 use config::{RudraConfig, ConfigurationError};
 use evaluator::compare_endpoints;
@@ -34,13 +34,13 @@ pub fn run_nginx(config: &RudraConfig) {
 }
 
 pub fn initialize_rudra() -> (RudraConfig, Option<Vec<Endpoint>>) {
-    let config = match RudraConfig::from_path(Path::new("./rudra.toml")) {
+    let config = match RudraConfig::from_env() {
         Ok(config) => config,
-        Err(ConfigurationError::IssueOpeningFile) => print_error_and_exit("An issue opening configuration file (\"rudra.toml\") occured"),
-        Err(ConfigurationError::IllegalSyntax(err)) => print_error_and_exit(format!("The configuration file syntax is invalid: {}", err)),
+        Err(ConfigurationError::InvalidApplicationURL(err_msg)) => print_error_and_exit(format!("Error: Invalid Application URL provided: {}", err_msg)),
+        Err(ConfigurationError::MissingEnvironmentVaribles(vars)) => print_error_and_exit(format!("Error: Missing the following env variables: {:?}", vars))
     };
 
-    let openapi_endpoints = match parse_openapi_json(config.environment.openapi_path.as_ref()) {
+    let openapi_endpoints = match parse_openapi_json(config.openapi_path.as_ref()) {
         Ok(openapi_endpoints) => openapi_endpoints,
         Err(ParsingError::ProblemOpeningFile) => print_error_and_exit("An issue opening the openapi file occured."),
         Err(ParsingError::InvalidSyntax) => print_error_and_exit("The syntax of the openapi file is incorrect."),

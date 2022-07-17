@@ -1,71 +1,82 @@
-use serde::Deserialize;
-use std::path::Path;
-use toml::de::Error;
+use std::{path::Path, collections::HashMap, str::FromStr, env};
 use url::Url;
 
-use crate::utils::read_file_to_string_or_err;
+const ENV_VAR_APP_BASE_URL: &str = "RUDRA_APP_BASE_URL";
+const ENV_VAR_DEBUG: &str = "RUDRA_DEBUG";
+const ENV_VAR_OPENAPI_PATH: &str = "RUDRA_OPENAPI_PATH";
 
-#[derive(Deserialize)]
 pub struct RudraConfig {
-    pub debug: Option<bool>,
-    pub environment: Environment,
-}
-
-#[derive(Deserialize)]
-pub struct Environment {
+    pub debug: bool,
     pub openapi_path: Box<Path>,
     pub app_base_url: Url,
 }
 
+
 impl RudraConfig {
-    fn from_str(config_str: &str) -> Result<RudraConfig, ConfigurationError> {
-        match toml::from_str(config_str) {
-            Ok(config) => Ok(config),
-            Err(err) => Err(ConfigurationError::IllegalSyntax(err)),
+    fn from_raw(env_vars: &HashMap<String, String>) -> Result<RudraConfig, ConfigurationError> {
+        // Check if all enviroment variables exist
+        let mut missing_keys = vec![];
+        if !env_vars.contains_key(ENV_VAR_APP_BASE_URL) {
+            missing_keys.push(String::from(ENV_VAR_APP_BASE_URL));
         }
-    }
+        if !env_vars.contains_key(ENV_VAR_OPENAPI_PATH) {
+            missing_keys.push(String::from(ENV_VAR_OPENAPI_PATH));
+        }
+        if missing_keys.len() > 0 {
+            return Err(ConfigurationError::MissingEnvironmentVaribles(missing_keys));
+        }
 
-    pub fn from_path(path: &Path) -> Result<RudraConfig, ConfigurationError> {
-        RudraConfig::from_str(&read_file_to_string_or_err(
-            path,
-            ConfigurationError::IssueOpeningFile,
-        )?)
-    }
-
-    pub fn is_debug(&self) -> bool {
-        match self.debug {
-            Some(debug) => debug,
+        // fetch values from enviroment variables
+        let debug = match env_vars.get(ENV_VAR_DEBUG) {
+            Some(debug) => debug.as_str() != "0" && debug.as_str() != "",
             None => false,
+        };
+        let openapi_path = Box::from(Path::new(&env_vars[ENV_VAR_OPENAPI_PATH]));
+        let app_base_url = match Url::from_str(&env_vars[ENV_VAR_APP_BASE_URL]) {
+            Ok(app_base_url) => app_base_url,
+            Err(parse_error) => return Err(ConfigurationError::InvalidApplicationURL(parse_error.to_string())),
+        };
+
+        Ok(RudraConfig{debug, openapi_path, app_base_url})
+    }
+
+    pub fn from_env() -> Result<RudraConfig, ConfigurationError> {
+        let mut env_vars = HashMap::new();
+        for var in env::vars() {
+            env_vars.insert(var.0, var.1);
         }
+        RudraConfig::from_raw(&env_vars)
     }
 }
 
+
 #[derive(Debug)]
 pub enum ConfigurationError {
-    IssueOpeningFile,
-    IllegalSyntax(Error),
+    InvalidApplicationURL(String),
+    MissingEnvironmentVaribles(Vec<String>),
 }
 
 #[cfg(test)]
 mod test {
-    use std::path::Path;
+    use std::collections::HashMap;
+    use super::{RudraConfig, ENV_VAR_APP_BASE_URL, ENV_VAR_DEBUG, ENV_VAR_OPENAPI_PATH};
 
-    use url::Url;
 
-    use super::{Environment, RudraConfig};
+    fn generate_config_map() -> HashMap<String, String> {
+        let mut config_map = HashMap::new();
 
-    const CONFIG_STR: &str = r#"
-        [environment]
-        openapi_path = './test/resource/swagger.json'
-        app_base_url = 'http://localhost:8080'
-    "#;
+        config_map.insert(String::from(ENV_VAR_DEBUG), String::from("1"));
+        config_map.insert(String::from(ENV_VAR_OPENAPI_PATH), String::from("./test/resource/swagger.json"));
+        config_map.insert(String::from(ENV_VAR_APP_BASE_URL), String::from("http://localhost:8080"));
+        config_map
+    }
 
     #[test]
-    fn can_fetch_valid_path() {
+    fn can_fetch_valid_openapi_path() {
+        let config_map = generate_config_map();
         assert_eq!(
-            RudraConfig::from_str(CONFIG_STR)
+            RudraConfig::from_raw(&config_map)
                 .unwrap()
-                .environment
                 .openapi_path
                 .to_str()
                 .unwrap(),
@@ -76,9 +87,8 @@ mod test {
     #[test]
     fn can_fetch_valid_url() {
         assert_eq!(
-            RudraConfig::from_str(CONFIG_STR)
+            RudraConfig::from_raw(&generate_config_map())
                 .unwrap()
-                .environment
                 .app_base_url
                 .as_str(),
             "http://localhost:8080/"
@@ -86,43 +96,73 @@ mod test {
     }
 
     #[test]
-    fn can_fetch_debug_info() {
-        assert_eq!(RudraConfig::from_str(CONFIG_STR).unwrap().debug, None);
+    fn can_catch_invalid_url() {
+        let mut config_map = generate_config_map();
+        config_map.insert(ENV_VAR_APP_BASE_URL.to_string(), String::from("jjjjjj"));
+        match RudraConfig::from_raw(&config_map) {
+            Ok(_) => panic!("Should throw error here"),
+            Err(_) => (),
+        }
     }
 
     #[test]
-    fn asserts_debug_status_false_when_set_and_non() {
-        let path = Path::new("./test");
-        let mut config = RudraConfig {
-            debug: None,
-            environment: Environment {
-                app_base_url: Url::parse("http://example.com").unwrap(),
-                openapi_path: Box::from(path),
-            },
-        };
+    fn missing_keys_lead_to_err() {
+        let mut config_map = generate_config_map();
+        config_map.remove(ENV_VAR_APP_BASE_URL);
+        match RudraConfig::from_raw(&config_map) {
+            Ok(_) => panic!("Should throw error here"),
+            Err(_) => (),
+        }
 
-        assert!(!config.is_debug());
-        config.debug = Some(false);
-        assert!(!config.is_debug());
     }
 
     #[test]
-    fn asserts_debug_status_true_when_set() {
-        let path = Path::new("./test");
-        let config = RudraConfig {
-            debug: Some(true),
-            environment: Environment {
-                app_base_url: Url::parse("http://example.com").unwrap(),
-                openapi_path: Box::from(path),
-            },
-        };
-        assert!(config.is_debug());
+    fn nonzero_debug_is_true() {
+        let mut config_map = generate_config_map();
+
+        assert!(
+            RudraConfig::from_raw(&config_map)
+                .unwrap()
+                .debug
+        );
+
+        config_map.insert(ENV_VAR_DEBUG.to_string(), String::from("2"));
+        assert!(
+            RudraConfig::from_raw(&config_map)
+                .unwrap()
+                .debug
+        );
     }
 
     #[test]
-    fn can_read_config_file() {
-        // expects this not to panik/have errors
-        let path = Path::new("./test/resource/rudra.toml");
-        RudraConfig::from_path(path).unwrap();
+    fn zero_or_empty_debug_is_false() {
+        let mut config_map = generate_config_map();
+
+        config_map.insert(ENV_VAR_DEBUG.to_string(), String::from("0"));
+        assert!(
+            !RudraConfig::from_raw(&config_map)
+                .unwrap()
+                .debug
+        );
+
+        config_map.insert(ENV_VAR_DEBUG.to_string(), String::from(""));
+        assert!(
+            !RudraConfig::from_raw(&config_map)
+                .unwrap()
+                .debug
+        );
     }
+
+    #[test]
+    fn non_existant_debug_is_false_no_error() {
+        let mut config_map = generate_config_map();
+        config_map.remove(ENV_VAR_DEBUG);
+
+        assert!(
+            !RudraConfig::from_raw(&config_map)
+                .unwrap()
+                .debug
+        );
+    }
+
 }

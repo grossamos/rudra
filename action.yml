@@ -8,8 +8,17 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - run: echo Hello World!
-      shell: bash
-
     - run: echo Mode ${{inputs.stage}}
       shell: bash
+    - shell: bash
+      run: |
+        if [["${{inputs.stage}}", "preperation"]]; then \
+          # start nginx
+          docker run
+        else if [["${{inputs.stage}}"]]; then \
+          # kill nginx and test return value
+          echo magic docker stop and test \
+        else \
+          echo "please provide a stage name of either \"preperation\" or \"evaluation\"" \
+          exit 1 \
+        fi
