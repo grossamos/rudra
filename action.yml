@@ -33,6 +33,7 @@ runs:
             fi 
             echo hello 1
             cat /proc/meminfo
+            docker ps -a
             docker exec rudra nginx -s stop 
             echo hello 2
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
