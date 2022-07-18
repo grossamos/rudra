@@ -16,24 +16,24 @@ runs:
   steps:
     - shell: bash
       run: |
-        if [[ "preperation" = "preperation" ]]; then \
-            if [[ "openapi-path" = "" || "instance-url" = "" ]]; then \
-                echo "please provide both openapi-path and instance-url as inputs" \
-                exit 1 \
-            fi \
-            docker network create rudra \
-            for line in $(docker ps -q); do \
-                docker network connect rudra $line; \
-            done \
-            docker run --env RUDRA_DEBUG=${{inputs.debug}} --env RUDRA_APP_BASE_URL=${{inputs.instance-url}} --env RUDRA_OPENAPI_PATH=${{inputs.openapi-path}} -p 13750:80 --network rudra --name rudra -d rudra \
-        elif [[ "evaluation" = "evaluation" ]]; then \
-            if [[ "openapi-path" != "" || "instance-url" != "" ]]; then \
-                echo "please configure rudra in the preperation stage and do not add openapi-path or instance-url here" \
-                exit 1 \
-            fi \
-            docker exec rudra nginx -s stop \
-            exit $(docker container inspect --format '{{.State.ExitCode}}') \
-        else \
-            echo "please provide a stage name of either \"preperation\" or \"evaluation\"" \
-            exit 1 \
-        fi \
+        if [[ "preperation" = "preperation" ]]; then 
+            if [[ "openapi-path" = "" || "instance-url" = "" ]]; then 
+                echo "please provide both openapi-path and instance-url as inputs" 
+                exit 1 
+            fi 
+            docker network create rudra 
+            for line in $(docker ps -q); do 
+                docker network connect rudra $line; 
+            done 
+            docker run --env RUDRA_DEBUG=${{inputs.debug}} --env RUDRA_APP_BASE_URL=${{inputs.instance-url}} --env RUDRA_OPENAPI_PATH=${{inputs.openapi-path}} -p 13750:80 --network rudra --name rudra -d rudra 
+        elif [[ "evaluation" = "evaluation" ]]; then 
+            if [[ "openapi-path" != "" || "instance-url" != "" ]]; then 
+                echo "please configure rudra in the preperation stage and do not add openapi-path or instance-url here" 
+                exit 1 
+            fi 
+            docker exec rudra nginx -s stop 
+            exit $(docker container inspect --format '{{.State.ExitCode}}') 
+        else 
+            echo "please provide a stage name of either \"preperation\" or \"evaluation\"" 
+            exit 1 
+        fi 
