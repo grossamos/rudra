@@ -1,11 +1,17 @@
-use std::path::Path;
-
 use json::JsonValue;
 
-use crate::{models::{Endpoint, Method}, utils::{read_file_to_string_or_err, Error}};
+use crate::{
+    config::RudraConfig,
+    models::{Endpoint, Method},
+    utils::{read_file_to_string_or_err, Error},
+};
 
-pub fn parse_openapi_json(path: &Path) -> Result<Vec<Endpoint>, Error> {
-    parse_json_doc(&read_file_to_string_or_err(path, Error::ProblemOpeningFile(Box::from(path)))?)
+pub fn parse_openapi_json(config: &RudraConfig) -> Result<Vec<Endpoint>, Error> {
+    parse_json_doc(&read_file_to_string_or_err(
+        config,
+        config.openapi_path.as_ref(),
+        Error::ProblemOpeningFile(config.openapi_path.clone()),
+    )?)
 }
 
 fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, Error> {
@@ -22,7 +28,6 @@ fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, Error> {
             if base_path == "/" {
                 ""
             } else {
-                println!("{}", base_path);
                 match base_path.as_str() {
                     Some(base_path) => base_path,
                     None => return Err(Error::InvalidParseSyntax),
@@ -85,7 +90,7 @@ mod test {
 
     use crate::{
         models::Method,
-        parser::json_parser::{parse_json_doc, parse_openapi_json},
+        parser::json_parser::{parse_json_doc, parse_openapi_json}, utils::test::create_mock_config,
     };
 
     const JSON_STRING: &str = r#"
@@ -219,7 +224,6 @@ mod test {
 
     #[test]
     fn parses_correct_basepath() {
-        println!("{:?}", parse_json_doc(JSON_STRING_DIFF_BASEPATH));
         assert!(parse_json_doc(JSON_STRING_DIFF_BASEPATH)
             .unwrap()
             .iter()
@@ -233,6 +237,8 @@ mod test {
     #[test]
     fn parses_file_correctly() {
         let path = Path::new("./test/resource/swagger.json");
-        assert_eq!(parse_openapi_json(&path).unwrap().len(), 4);
+        let mut config = create_mock_config();
+        config.openapi_path = Box::from(path);
+        assert_eq!(parse_openapi_json(&config).unwrap().len(), 4);
     }
 }

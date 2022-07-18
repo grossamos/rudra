@@ -19,7 +19,7 @@ impl Error {
             Error::InvalidApplicationURL(err_msg) => format!("Invalid Application URL provided: {}", err_msg),
             Error::MissingEnvironmentVaribles(vars) => format!("Missing the following env variables: {:?}", vars),
             Error::UnexpectedIOIssue(err_msg) => format!("An issue with IO occured: {}", err_msg),
-            Error::ProblemOpeningFile(path) => format!("An issue opening the openapi (\"{:?}\") file occured.", path),
+            Error::ProblemOpeningFile(path) => format!("An issue opening the openapi ({:?}) file occured.", path),
             Error::InvalidParseSyntax => format!("The syntax of the openapi file is incorrect."),
             Error::InvalidParseMethod(method) => format!("The openapi file contains an invalid method: {}", method),
             Error::InvalidParseStatusCode(code) => format!("The openapi file contains an invalid status code: {}", code),

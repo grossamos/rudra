@@ -1,24 +1,30 @@
 use std::{path::Path, fs::File, io::{BufReader, BufRead}};
 
-use crate::{models::{Endpoint, Method}, utils::Error};
+use crate::{models::{Endpoint, Method}, utils::{Error, print_debug_message}, config::RudraConfig};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-pub fn parse_nginx_access_log() -> Result<Vec<Endpoint>, Error> {
-    parse_access_log(Path::new("/var/log/nginx/access.log"))
+pub fn parse_nginx_access_log(config: &RudraConfig) -> Result<Vec<Endpoint>, Error> {
+    parse_access_log(config, Path::new("/var/log/nginx/access.log"))
 }
 
-fn parse_access_log(path: &Path) -> Result<Vec<Endpoint>, Error> {
+fn parse_access_log(config: &RudraConfig, path: &Path) -> Result<Vec<Endpoint>, Error> {
     let mut endpoints = Vec::new();
     let reader = match File::open(path) {
         Ok(file) => BufReader::new(file),
-        Err(_) => return Err(Error::ProblemOpeningFile(Box::from(path))),
+        Err(why) => {
+            print_debug_message(config, why.to_string());
+            return Err(Error::ProblemOpeningFile(Box::from(path)));
+        }
     };
 
     for line in reader.lines() {
         let line_str = match line {
             Ok(line_str) => line_str,
-            Err(_) => return Err(Error::ProblemOpeningFile(Box::from(path))),
+            Err(why) => {
+                print_debug_message(config, why.to_string());
+                return Err(Error::ProblemOpeningFile(Box::from(path)));
+            }
         };
 
         endpoints.push(parse_nginx_line(&line_str)?);
@@ -74,7 +80,7 @@ fn parse_nginx_line(line: &str) -> Result<Endpoint, Error> {
 mod test {
     use std::path::Path;
 
-    use crate::{parser::nginx_parser::{parse_nginx_line, parse_access_log}, models::Method};
+    use crate::{parser::nginx_parser::{parse_nginx_line, parse_access_log}, models::Method, utils::test::create_mock_config};
 
     #[test]
     fn parses_correct_status() {
@@ -98,6 +104,6 @@ mod test {
     #[test]
     fn parses_full_access_log() {
         let path = Path::new("./test/resource/access.log");
-        assert_eq!(parse_access_log(&path).unwrap().len(), 9);
+        assert_eq!(parse_access_log(&create_mock_config(), &path).unwrap().len(), 9);
     }
 }

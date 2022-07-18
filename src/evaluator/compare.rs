@@ -223,4 +223,17 @@ mod test {
 
         assert_eq!(set_a, vec![1, 2, 3, 4, 5]);
     }
+
+    #[test]
+    fn can_process_empty_lists() {
+        let set_a = vec![];
+        let set_b = vec![
+            create_endpoint_a(),
+            create_endpoint_b(),
+            create_endpoint_c(),
+            create_endpoint_d(),
+        ];
+
+        assert_eq!(compare_endpoints(&set_a, &set_b).len(), 4);
+    }
 }

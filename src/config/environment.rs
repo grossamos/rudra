@@ -9,7 +9,7 @@ const ENV_VAR_DEBUG: &str = "RUDRA_DEBUG";
 const ENV_VAR_OPENAPI_PATH: &str = "RUDRA_OPENAPI_PATH";
 
 impl RudraConfig {
-    fn from_raw(env_vars: &HashMap<String, String>) -> Result<RudraConfig, Error> {
+    pub fn from_raw(env_vars: &HashMap<String, String>) -> Result<RudraConfig, Error> {
         // Check if all enviroment variables exist
         let mut missing_keys = vec![];
         if !env_vars.contains_key(ENV_VAR_APP_BASE_URL) {

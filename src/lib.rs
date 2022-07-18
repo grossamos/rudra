@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use config::{RudraConfig, configure_nginx};
 use evaluator::compare_endpoints;
@@ -26,7 +26,12 @@ pub fn run_nginx(config: &RudraConfig) {
     let mut nginx_cmd = Command::new("nginx");
     nginx_cmd.arg("-g").arg("daemon off;");
 
-    match nginx_cmd.status() {
+    if !config.debug {
+        nginx_cmd.stdout(Stdio::null());
+    }
+
+
+    match nginx_cmd.stdout(Stdio::null()).status() {
         Ok(status) => {
             if !status.success() {
                 print_error_and_exit("Error: Unexpected non-zero exit code from nginx");
@@ -44,7 +49,7 @@ pub fn initialize_rudra() -> (RudraConfig, Option<Vec<Endpoint>>) {
         Err(error) => error.display_error_and_exit(),
     };
 
-    let openapi_endpoints = match parse_openapi_json(config.openapi_path.as_ref()) {
+    let openapi_endpoints = match parse_openapi_json(&config) {
         Ok(openapi_endpoints) => openapi_endpoints,
         Err(error) => error.display_error_and_exit(),
     };
@@ -52,20 +57,20 @@ pub fn initialize_rudra() -> (RudraConfig, Option<Vec<Endpoint>>) {
     (config, Some(openapi_endpoints))
 }
 
-pub fn run_eval(config: RudraConfig, openapi_endpoints: Option<Vec<Endpoint>>) {
-    print_debug_message(&config, "Evaluating endpoint coverage");
+pub fn run_eval(config: &RudraConfig, openapi_endpoints: Option<Vec<Endpoint>>) {
+    print_debug_message(config, "Evaluating endpoint coverage");
 
     // TODO replace with dynamic fetch of spec
     let openapi_endpoints = openapi_endpoints.unwrap();
 
-    let nginx_endpoints = match parse_nginx_access_log() {
+    let nginx_endpoints = match parse_nginx_access_log(config) {
         Ok(nginx_endpoints) => nginx_endpoints,
         Err(_) => print_error_and_exit("An unexpected error occured while parsing the nginx logs"),
     };
 
     let endpoint_diff = compare_endpoints(&nginx_endpoints, &openapi_endpoints);
 
-    if !endpoint_diff.len() == 0 {
+    if endpoint_diff.len() != 0 {
         print_error_and_exit("Not all endpoints were tested!");
     } else {
         println!("Coverage 100%");

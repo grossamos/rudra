@@ -5,5 +5,5 @@ fn main() {
 
     run_nginx(&config);
 
-    run_eval(config, openapi_endpoints);
+    run_eval(&config, openapi_endpoints);
 }

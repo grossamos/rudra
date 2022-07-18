@@ -32,6 +32,7 @@ runs:
                 exit 1 
             fi 
             docker exec rudra nginx -s stop 
+            sleep 1
             docker logs rudra
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
         else 

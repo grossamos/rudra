@@ -7,11 +7,15 @@ use crate::utils::Error;
 use super::RudraConfig;
 
 pub fn configure_nginx(config: &RudraConfig) -> Result<(), Error> {
-    replace_url_in_file(Path::new("/etc/nginx/nginx.conf"), config.app_base_url.as_str())
+    replace_url_in_file(config, Path::new("/etc/nginx/nginx.conf"))
 }
 
 fn replace_url(base: &String, url: &str) -> String {
     base.replace("INSERT_URL_HERE", url)
+}
+
+fn replace_error_log(base: &String) -> String {
+    base.replace("error_log  off;", "error_log  /var/log/nginx/error.log notice;")
 }
 
 fn open_config_file(path: &Path, for_writing: bool) -> Result<File, Error> {
@@ -26,7 +30,7 @@ fn open_config_file(path: &Path, for_writing: bool) -> Result<File, Error> {
     }
 }
 
-fn replace_url_in_file(path: &Path, url: &str) -> Result<(), Error> {
+fn replace_url_in_file(config: &RudraConfig, path: &Path) -> Result<(), Error> {
     let mut file = open_config_file(path, false)?;
 
     let mut config_string = String::new();
@@ -40,7 +44,12 @@ fn replace_url_in_file(path: &Path, url: &str) -> Result<(), Error> {
         }
     }
 
-    let config_string = replace_url(&config_string, url);
+    let mut config_string = replace_url(&config_string, config.app_base_url.as_str());
+
+    if config.debug {
+        config_string = replace_error_log(&config_string);
+    }
+
     let mut file = open_config_file(path, true)?;
     match file.write_all(config_string.as_bytes()) {
         Ok(_) => (),
@@ -60,10 +69,12 @@ mod tests {
     use std::{
         fs::File,
         io::{Read, Write},
-        path::Path,
+        path::Path, str::FromStr,
     };
 
-    use crate::config::nginx::{replace_url, replace_url_in_file};
+    use url::Url;
+
+    use crate::{config::nginx::{replace_url, replace_url_in_file, replace_error_log}, utils::test::create_mock_config};
 
     use super::open_config_file;
 
@@ -81,7 +92,9 @@ mod tests {
         write_default_config();
 
         let nginx_path = Path::new("./test/resource/nginx.conf");
-        replace_url_in_file(&nginx_path, "https://example.com").unwrap();
+        let mut config = create_mock_config();
+        config.app_base_url = Url::from_str("https://example.com").unwrap();
+        replace_url_in_file(&config, &nginx_path).unwrap();
         let mut conf_string = String::from("");
         File::open(&nginx_path)
             .unwrap()
@@ -89,7 +102,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             conf_string,
-            "...some other conf\nproxy_pass https://example.com\n...some more conf\n"
+            "...some other conf\nproxy_pass https://example.com/\n...some more conf\n"
         );
 
         write_default_config();
@@ -102,5 +115,14 @@ mod tests {
         )
         .unwrap();
         file.flush().unwrap();
+    }
+
+    #[test]
+    fn replaces_log_when_debug_on() {
+        let test_string = String::from("... stuff ... error_log  off; ... stuff ...");
+        assert_eq!(
+            replace_error_log(&test_string),
+            "... stuff ... error_log  /var/log/nginx/error.log notice; ... stuff ..."
+        );
     }
 }
