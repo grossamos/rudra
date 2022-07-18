@@ -32,7 +32,7 @@ runs:
                 exit 1 
             fi 
             docker exec rudra nginx -s stop 
-            exit $(docker container inspect --format '{{.State.ExitCode}}') 
+            exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
         else 
             echo "please provide a stage name of either \"preperation\" or \"evaluation\"" 
             exit 1 
