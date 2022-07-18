@@ -1,25 +1,30 @@
 use std::process::Command;
 
-use config::{RudraConfig, ConfigurationError};
+use config::{RudraConfig, configure_nginx};
 use evaluator::compare_endpoints;
 use models::Endpoint;
-use parser::{parse_openapi_json, ParsingError};
+use parser::parse_openapi_json;
 use utils::print_debug_message;
 
-use crate::{utils::print_error_and_exit, parser::parse_nginx_access_log};
+use crate::{parser::parse_nginx_access_log, utils::print_error_and_exit};
 
-pub mod parser;
-pub mod models;
-pub mod evaluator;
 pub mod config;
+pub mod evaluator;
+pub mod models;
+pub mod parser;
 pub mod utils;
 
 pub fn run_nginx(config: &RudraConfig) {
+    // insert application URL to nginx file
+    match configure_nginx(config) {
+        Ok(_) => (),
+        Err(error) => error.display_error_and_exit(),
+    }
+
     // spawn nginx as a subprocess
     print_debug_message(config, "Starting nginx");
     let mut nginx_cmd = Command::new("nginx");
-    nginx_cmd.arg("-g")
-               .arg("daemon off;");
+    nginx_cmd.arg("-g").arg("daemon off;");
 
     match nginx_cmd.status() {
         Ok(status) => {
@@ -36,16 +41,12 @@ pub fn run_nginx(config: &RudraConfig) {
 pub fn initialize_rudra() -> (RudraConfig, Option<Vec<Endpoint>>) {
     let config = match RudraConfig::from_env() {
         Ok(config) => config,
-        Err(ConfigurationError::InvalidApplicationURL(err_msg)) => print_error_and_exit(format!("Error: Invalid Application URL provided: {}", err_msg)),
-        Err(ConfigurationError::MissingEnvironmentVaribles(vars)) => print_error_and_exit(format!("Error: Missing the following env variables: {:?}", vars))
+        Err(error) => error.display_error_and_exit(),
     };
 
     let openapi_endpoints = match parse_openapi_json(config.openapi_path.as_ref()) {
         Ok(openapi_endpoints) => openapi_endpoints,
-        Err(ParsingError::ProblemOpeningFile) => print_error_and_exit("An issue opening the openapi file occured."),
-        Err(ParsingError::InvalidSyntax) => print_error_and_exit("The syntax of the openapi file is incorrect."),
-        Err(ParsingError::InvalidMethod) => print_error_and_exit("The openapi file contains an invalid method."),
-        Err(ParsingError::InvalidStatusCode) => print_error_and_exit("The openapi file contains an invalid status code."),
+        Err(error) => error.display_error_and_exit(),
     };
 
     (config, Some(openapi_endpoints))

@@ -2,20 +2,18 @@ use std::path::Path;
 
 use json::JsonValue;
 
-use crate::{models::{Endpoint, Method}, utils::read_file_to_string_or_err};
+use crate::{models::{Endpoint, Method}, utils::{read_file_to_string_or_err, Error}};
 
-use super::ParsingError;
-
-pub fn parse_openapi_json(path: &Path) -> Result<Vec<Endpoint>, ParsingError> {
-    parse_json_doc(&read_file_to_string_or_err(path, ParsingError::ProblemOpeningFile)?)
+pub fn parse_openapi_json(path: &Path) -> Result<Vec<Endpoint>, Error> {
+    parse_json_doc(&read_file_to_string_or_err(path, Error::ProblemOpeningFile(Box::from(path)))?)
 }
 
-fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, ParsingError> {
+fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, Error> {
     let mut endpoints = vec![];
 
     let json_obj = match json::parse(json_string) {
         Ok(json_obj) => json_obj,
-        Err(_) => return Err(ParsingError::InvalidSyntax),
+        Err(_) => return Err(Error::InvalidParseSyntax),
     };
 
     let base_path = match &json_obj["basePath"] {
@@ -27,14 +25,14 @@ fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, ParsingError> {
                 println!("{}", base_path);
                 match base_path.as_str() {
                     Some(base_path) => base_path,
-                    None => return Err(ParsingError::InvalidSyntax),
+                    None => return Err(Error::InvalidParseSyntax),
                 }
             }
         }
     };
 
     let paths = match &json_obj["paths"] {
-        json::Null => return Err(ParsingError::InvalidSyntax),
+        json::Null => return Err(Error::InvalidParseSyntax),
         responses => responses,
     };
 
@@ -51,14 +49,14 @@ fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, ParsingError> {
 
         for (method, method_json) in get_methods_from_path(path_json.1)?.into_iter() {
             let responses = match &method_json["responses"] {
-                json::Null => return Err(ParsingError::InvalidSyntax),
+                json::Null => return Err(Error::InvalidParseSyntax),
                 responses => responses,
             };
 
             for response in responses.entries() {
                 let status_code = match response.0.parse() {
                     Ok(status_code) => status_code,
-                    Err(_) => return Err(ParsingError::InvalidStatusCode),
+                    Err(_) => return Err(Error::InvalidParseStatusCode(response.0.to_string())),
                 };
                 endpoints.push(Endpoint::new(method.clone(), path.clone(), status_code))
             }
@@ -68,13 +66,13 @@ fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, ParsingError> {
     Ok(endpoints)
 }
 
-fn get_methods_from_path(path_json: &JsonValue) -> Result<Vec<(Method, &JsonValue)>, ParsingError> {
+fn get_methods_from_path(path_json: &JsonValue) -> Result<Vec<(Method, &JsonValue)>, Error> {
     let mut methods = vec![];
 
     for method_entry in path_json.entries() {
         let method = match Method::from_str(method_entry.0) {
             Some(method) => method,
-            None => return Err(ParsingError::InvalidMethod),
+            None => return Err(Error::InvalidParseMethod(method_entry.0.to_string())),
         };
         methods.push((method, method_entry.1));
     }
