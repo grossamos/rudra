@@ -19,6 +19,5 @@ RUN rm /var/log/nginx/access.log
 
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/rudra /
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
-COPY ./test/resource/swagger.json ./test/resource/swagger.json
 
 CMD ["/rudra"]

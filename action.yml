@@ -25,7 +25,7 @@ runs:
             for line in $(docker ps -q); do 
                 docker network connect rudra $line; 
             done 
-            docker run --env RUDRA_DEBUG=${{inputs.debug}} --env RUDRA_APP_BASE_URL=${{inputs.instance-url}} --env RUDRA_OPENAPI_PATH=${{inputs.openapi-path}} -p 13750:80 --network rudra --name rudra -d grossamos/rudra 
+            docker run --env RUDRA_DEBUG=${{inputs.debug}} --env RUDRA_APP_BASE_URL=${{inputs.instance-url}} --env RUDRA_OPENAPI_PATH=/swagger.json --volume ${{inputs.openapi-path}}:/swagger.json -p 13750:80 --network rudra --name rudra -d grossamos/rudra 
         elif [[ "${{inputs.stage}}" = "evaluation" ]]; then 
             if [[ "${{inputs.openapi-path}}" != "" || "${{inputs.instance-url}}" != "" ]]; then 
                 echo "please configure rudra in the preperation stage and do not add openapi-path or instance-url here" 

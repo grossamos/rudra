@@ -40,10 +40,7 @@ fn replace_url_in_file(path: &Path, url: &str) -> Result<(), Error> {
         }
     }
 
-    println!("{}", config_string);
     let config_string = replace_url(&config_string, url);
-    println!("{}", config_string);
-
     let mut file = open_config_file(path, true)?;
     match file.write_all(config_string.as_bytes()) {
         Ok(_) => (),
