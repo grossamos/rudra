@@ -34,11 +34,11 @@ runs:
             echo hello 1
             cat /proc/meminfo
             docker ps -a
+            docker logs rudra
             docker exec rudra ps
-            echo hello 2
-            docker exec rudra kill 7
+            docker exec rudra kill 10
             echo hello 3
-            docker exec rudra nginx -s stop 
+            #docker exec rudra nginx -s stop 
             echo hello 4
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
         else 
