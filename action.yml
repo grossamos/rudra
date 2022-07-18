@@ -31,7 +31,9 @@ runs:
                 echo "please configure rudra in the preperation stage and do not add openapi-path or instance-url here" 
                 exit 1 
             fi 
+            echo hello 1
             docker exec rudra nginx -s stop 
+            echo hello 2
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
         else 
             echo "please provide a stage name of either \"preperation\" or \"evaluation\"" 
