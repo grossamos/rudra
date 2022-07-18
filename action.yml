@@ -34,8 +34,12 @@ runs:
             echo hello 1
             cat /proc/meminfo
             docker ps -a
-            docker exec rudra nginx -s stop 
+            docker exec rudra ps
             echo hello 2
+            docker exec rudra kill 7
+            echo hello 3
+            docker exec rudra nginx -s stop 
+            echo hello 4
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
         else 
             echo "please provide a stage name of either \"preperation\" or \"evaluation\"" 
