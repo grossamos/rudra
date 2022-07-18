@@ -1,4 +1,4 @@
-use std::process::{Command, Stdio};
+use std::process::{Command, Stdio, self};
 
 use config::{RudraConfig, configure_nginx};
 use evaluator::compare_endpoints;
@@ -71,7 +71,11 @@ pub fn run_eval(config: &RudraConfig, openapi_endpoints: Option<Vec<Endpoint>>) 
     let endpoint_diff = compare_endpoints(&nginx_endpoints, &openapi_endpoints);
 
     if endpoint_diff.len() != 0 {
-        print_error_and_exit("Not all endpoints were tested!");
+        println!("Some endpoint configurations were missed:");
+        for endpoint in endpoint_diff {
+            println!("- \"{}\", {:?}, {}", endpoint.path, endpoint.method, endpoint.status_code);
+        }
+        process::exit(1);
     } else {
         println!("Coverage 100%");
     }
