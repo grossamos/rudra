@@ -57,6 +57,10 @@ pub fn parse_yaml_doc(yaml_string: &str) -> Result<Vec<Endpoint>, Error> {
 
             let method_infos = retrive_value_as_hash_map(methods, method_key)?;
             let statuses = retrive_value_as_hash_map(method_infos, &Yaml::from_str("responses"))?;
+            if method_infos.get(&Yaml::from_str("security")).is_some() {
+                endpoints.push(Endpoint::new(method.clone(), path.clone(), 401));
+                endpoints.push(Endpoint::new(method.clone(), path.clone(), 403));
+            }
 
             for status_key in statuses.keys() {
                 let status_code = match status_key.as_str().unwrap().parse() {
@@ -67,11 +71,7 @@ pub fn parse_yaml_doc(yaml_string: &str) -> Result<Vec<Endpoint>, Error> {
                         ))
                     }
                 };
-                endpoints.push(Endpoint {
-                    method: method.clone(),
-                    path: path.clone(),
-                    status_code,
-                })
+                endpoints.push(Endpoint::new(method.clone(), path.clone(), status_code));
             }
         }
     }
@@ -94,7 +94,6 @@ fn retrive_value_as_hash_map<'a>(
 
 #[cfg(test)]
 mod tests {
-
     use crate::{models::Method, parser::yaml_parser::parse_yaml_doc};
 
     const YAML_STRING: &str = "
@@ -102,6 +101,8 @@ basePath: /
 paths:
   /:
     get:
+      security:
+        - BasicAuth: []
       responses:
         \"400\":
           description: Bad Request
@@ -164,5 +165,25 @@ paths:
             .unwrap()
             .iter()
             .any(|x| x.status_code == 418));
+    }
+
+    #[test]
+    fn adds_401_403_for_security_headers() {
+        assert_eq!(
+            parse_yaml_doc(YAML_STRING)
+                .unwrap()
+                .iter()
+                .filter(|x| x.method == Method::GET && x.status_code == 401 && x.path == "/")
+                .count(),
+            1
+        );
+        assert_eq!(
+            parse_yaml_doc(YAML_STRING)
+                .unwrap()
+                .iter()
+                .filter(|x| x.method == Method::GET && x.status_code == 403 && x.path == "/")
+                .count(),
+            1
+        );
     }
 }

@@ -11,5 +11,6 @@ pub struct RudraConfig {
     pub debug: bool,
     pub openapi_path: Box<Path>,
     pub app_base_url: Url,
+    pub account_for_security: bool
 }
 

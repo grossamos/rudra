@@ -11,6 +11,9 @@ inputs:
   instance-url: 
     description: 'URL of application that will be tested'
     required: false
+  account-for-security: 
+    description: 'Take security tags of spec into account and require all 401/403 cases to be tested'
+    required: false
 runs:
   using: "composite"
   steps:
@@ -26,7 +29,7 @@ runs:
                 docker network connect rudra $line; 
             done 
             RUDRA_APP_BASE_URL=${{inputs.instance-url}}
-            docker run --env RUDRA_DEBUG=${{inputs.debug}} --env RUDRA_APP_BASE_URL=${RUDRA_APP_BASE_URL/localhost/172.17.0.1} --env RUDRA_OPENAPI_PATH=/swagger.json --volume $PWD/${{inputs.openapi-path}}:/swagger.json -p 13750:80 --network rudra --name rudra -d grossamos/rudra 
+            docker run --env RUDRA_DEBUG=${{inputs.debug}} --env RUDRA_APP_BASE_URL=${RUDRA_APP_BASE_URL/localhost/172.17.0.1} --env RUDRA_OPENAPI_PATH=/swagger.json --env RUDRA_ACCOUNT_FOR_SECURITY=${{inputs.account-for-security}} --volume $PWD/${{inputs.openapi-path}}:/swagger.json -p 13750:80 --network rudra --name rudra -d grossamos/rudra 
         elif [[ "${{inputs.stage}}" = "evaluation" ]]; then 
             if [[ "${{inputs.openapi-path}}" != "" || "${{inputs.instance-url}}" != "" ]]; then 
                 echo "please configure rudra in the preperation stage and do not add openapi-path or instance-url here" 

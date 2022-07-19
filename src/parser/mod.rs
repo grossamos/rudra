@@ -43,7 +43,7 @@ mod tests {
         let path = Path::new("./test/resource/swagger.json");
         let mut config = create_mock_config();
         config.openapi_path = Box::from(path);
-        assert_eq!(parse_openapi(&config).unwrap().len(), 4);
+        assert_eq!(parse_openapi(&config).unwrap().len(), 6);
     }
 
     #[test]
@@ -51,6 +51,6 @@ mod tests {
         let path = Path::new("./test/resource/swagger.yaml");
         let mut config = create_mock_config();
         config.openapi_path = Box::from(path);
-        assert_eq!(parse_openapi(&config).unwrap().len(), 4);
+        assert_eq!(parse_openapi(&config).unwrap().len(), 6);
     }
 }

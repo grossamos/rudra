@@ -7,6 +7,7 @@ use super::RudraConfig;
 const ENV_VAR_APP_BASE_URL: &str = "RUDRA_APP_BASE_URL";
 const ENV_VAR_DEBUG: &str = "RUDRA_DEBUG";
 const ENV_VAR_OPENAPI_PATH: &str = "RUDRA_OPENAPI_PATH";
+const ENV_VAR_ACCOUNT_FOR_SECURITY: &str = "RUDRA_ACCOUNT_FOR_SECURITY";
 
 impl RudraConfig {
     pub fn from_raw(env_vars: &HashMap<String, String>) -> Result<RudraConfig, Error> {
@@ -23,17 +24,15 @@ impl RudraConfig {
         }
 
         // fetch values from enviroment variables
-        let debug = match env_vars.get(ENV_VAR_DEBUG) {
-            Some(debug) => debug.as_str() != "0" && debug.as_str() != "",
-            None => false,
-        };
+        let debug = get_bool_env_var(ENV_VAR_DEBUG, env_vars);
+        let account_for_security = get_bool_env_var(ENV_VAR_ACCOUNT_FOR_SECURITY, env_vars);
         let openapi_path = Box::from(Path::new(&env_vars[ENV_VAR_OPENAPI_PATH]));
         let app_base_url = match Url::from_str(&env_vars[ENV_VAR_APP_BASE_URL]) {
             Ok(app_base_url) => app_base_url,
             Err(parse_error) => return Err(Error::InvalidApplicationURL(parse_error.to_string())),
         };
 
-        Ok(RudraConfig{debug, openapi_path, app_base_url})
+        Ok(RudraConfig{debug, openapi_path, app_base_url, account_for_security})
     }
 
     pub fn from_env() -> Result<RudraConfig, Error> {
@@ -45,11 +44,18 @@ impl RudraConfig {
     }
 }
 
-
+fn get_bool_env_var(key: &str, env_vars: &HashMap<String, String>) -> bool {
+    match env_vars.get(key) {
+        Some(debug) => debug.as_str() != "0" && debug.as_str() != "",
+        None => false,
+    }
+}
 
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
+    use crate::config::environment::get_bool_env_var;
+
     use super::{RudraConfig, ENV_VAR_APP_BASE_URL, ENV_VAR_DEBUG, ENV_VAR_OPENAPI_PATH};
 
 
@@ -108,51 +114,48 @@ mod test {
     }
 
     #[test]
-    fn nonzero_debug_is_true() {
+    fn nonzero_bool_is_true() {
         let mut config_map = generate_config_map();
-
-        assert!(
-            RudraConfig::from_raw(&config_map)
-                .unwrap()
-                .debug
-        );
-
+        assert!(get_bool_env_var(ENV_VAR_DEBUG, &config_map));
         config_map.insert(ENV_VAR_DEBUG.to_string(), String::from("2"));
-        assert!(
-            RudraConfig::from_raw(&config_map)
-                .unwrap()
-                .debug
-        );
+        assert!(get_bool_env_var(ENV_VAR_DEBUG, &config_map));
     }
 
     #[test]
-    fn zero_or_empty_debug_is_false() {
+    fn zero_or_empty_bool_is_false() {
         let mut config_map = generate_config_map();
 
         config_map.insert(ENV_VAR_DEBUG.to_string(), String::from("0"));
-        assert!(
-            !RudraConfig::from_raw(&config_map)
-                .unwrap()
-                .debug
-        );
+        assert!(!get_bool_env_var(ENV_VAR_DEBUG, &config_map));
 
         config_map.insert(ENV_VAR_DEBUG.to_string(), String::from(""));
+        assert!(!get_bool_env_var(ENV_VAR_DEBUG, &config_map));
+    }
+
+    #[test]
+    fn non_existant_bool_is_false_no_error() {
+        let mut config_map = generate_config_map();
+        config_map.remove(ENV_VAR_DEBUG);
+        assert!(!get_bool_env_var(ENV_VAR_DEBUG, &config_map));
+    }
+
+    #[test]
+    fn debug_val_is_used() {
+        let config_map = generate_config_map();
         assert!(
-            !RudraConfig::from_raw(&config_map)
+            RudraConfig::from_raw(&config_map)
                 .unwrap()
                 .debug
         );
     }
 
     #[test]
-    fn non_existant_debug_is_false_no_error() {
-        let mut config_map = generate_config_map();
-        config_map.remove(ENV_VAR_DEBUG);
-
+    fn account_for_security_val_is_used() {
+        let config_map = generate_config_map();
         assert!(
             !RudraConfig::from_raw(&config_map)
                 .unwrap()
-                .debug
+                .account_for_security
         );
     }
 

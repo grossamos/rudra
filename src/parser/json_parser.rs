@@ -46,6 +46,11 @@ pub fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, Error> {
                 responses => responses,
             };
 
+            if !&method_json["security"].is_null() {
+                endpoints.push(Endpoint::new(method.clone(), path.clone(), 401));
+                endpoints.push(Endpoint::new(method.clone(), path.clone(), 403));
+            }
+
             for response in responses.entries() {
                 let status_code = match response.0.parse() {
                     Ok(status_code) => status_code,
@@ -86,6 +91,7 @@ mod test {
         "paths" : {
             "/": {
                 "get": {
+                    "security": [],
                     "responses": {
                         "200": {
                             "description": "OK",
@@ -130,7 +136,7 @@ mod test {
 
     #[test]
     fn parses_correct_number_of_responses() {
-        assert_eq!(parse_json_doc(JSON_STRING).unwrap().len(), 4);
+        assert_eq!(parse_json_doc(JSON_STRING).unwrap().len(), 6);
     }
 
     #[test]
@@ -175,6 +181,12 @@ mod test {
             .unwrap()
             .iter()
             .any(|x| x.method == Method::PUT));
+    }
+
+    #[test]
+    fn adds_401_403_for_security_headers() {
+        assert_eq!(parse_json_doc(JSON_STRING).unwrap().iter().filter(|x| x.method == Method::GET && x.status_code == 401 && x.path == "/").count(), 1);
+        assert_eq!(parse_json_doc(JSON_STRING).unwrap().iter().filter(|x| x.method == Method::GET && x.status_code == 403 && x.path == "/").count(), 1);
     }
 
     const JSON_STRING_DIFF_BASEPATH: &str = r#"
