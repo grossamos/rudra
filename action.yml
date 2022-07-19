@@ -34,7 +34,7 @@ runs:
             docker logs rudra
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
         elif [[ "${{inputs.stage}}" = "evaluation" ]]; then 
-            if [[ "${{inputs.openapi-path}}" != "" || "${{inputs.instance-url}}" != "" || "${ {inputs.account-for-security}}" != "" ]]; then 
+            if [[ "${{inputs.openapi-path}}" != "" || "${{inputs.instance-url}}" != "" || "${{inputs.account-for-security}}" != "" ]]; then 
                 echo "please configure rudra in the preperation stage and do not add openapi-path or instance-url here" 
                 exit 1 
             fi 
