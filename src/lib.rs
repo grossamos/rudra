@@ -3,7 +3,7 @@ use std::process::{Command, Stdio, self};
 use config::{RudraConfig, configure_nginx};
 use evaluator::compare_endpoints;
 use models::Endpoint;
-use parser::parse_openapi_json;
+use parser::parse_openapi;
 use utils::print_debug_message;
 
 use crate::{parser::parse_nginx_access_log, utils::print_error_and_exit};
@@ -49,7 +49,7 @@ pub fn initialize_rudra() -> (RudraConfig, Option<Vec<Endpoint>>) {
         Err(error) => error.display_error_and_exit(),
     };
 
-    let openapi_endpoints = match parse_openapi_json(&config) {
+    let openapi_endpoints = match parse_openapi(&config) {
         Ok(openapi_endpoints) => openapi_endpoints,
         Err(error) => error.display_error_and_exit(),
     };

@@ -1,20 +1,13 @@
 use json::JsonValue;
 
 use crate::{
-    config::RudraConfig,
     models::{Endpoint, Method},
-    utils::{read_file_to_string_or_err, Error},
+    utils::Error,
 };
 
-pub fn parse_openapi_json(config: &RudraConfig) -> Result<Vec<Endpoint>, Error> {
-    parse_json_doc(&read_file_to_string_or_err(
-        config,
-        config.openapi_path.as_ref(),
-        Error::ProblemOpeningFile(config.openapi_path.clone()),
-    )?)
-}
+use super::common::format_basepath;
 
-fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, Error> {
+pub fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, Error> {
     let mut endpoints = vec![];
 
     let json_obj = match json::parse(json_string) {
@@ -24,17 +17,12 @@ fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, Error> {
 
     let base_path = match &json_obj["basePath"] {
         JsonValue::Null => "",
-        base_path => {
-            if base_path == "/" {
-                ""
-            } else {
-                match base_path.as_str() {
-                    Some(base_path) => base_path,
-                    None => return Err(Error::InvalidParseSyntax),
-                }
-            }
-        }
+        base_path => match base_path.as_str() {
+            Some(base_path) => base_path,
+            None => return Err(Error::InvalidBasePath),
+        },
     };
+    let base_path = format_basepath(base_path);
 
     let paths = match &json_obj["paths"] {
         json::Null => return Err(Error::InvalidParseSyntax),
@@ -86,11 +74,10 @@ fn get_methods_from_path(path_json: &JsonValue) -> Result<Vec<(Method, &JsonValu
 
 #[cfg(test)]
 mod test {
-    use std::path::Path;
 
     use crate::{
         models::Method,
-        parser::json_parser::{parse_json_doc, parse_openapi_json}, utils::test::create_mock_config,
+        parser::json_parser::parse_json_doc,
     };
 
     const JSON_STRING: &str = r#"
@@ -232,13 +219,5 @@ mod test {
             .unwrap()
             .iter()
             .any(|x| x.path == "/foo/bar"));
-    }
-
-    #[test]
-    fn parses_file_correctly() {
-        let path = Path::new("./test/resource/swagger.json");
-        let mut config = create_mock_config();
-        config.openapi_path = Box::from(path);
-        assert_eq!(parse_openapi_json(&config).unwrap().len(), 4);
     }
 }

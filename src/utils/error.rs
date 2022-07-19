@@ -8,9 +8,12 @@ pub enum Error {
     MissingEnvironmentVaribles(Vec<String>),
     UnexpectedIOIssue(String),
     InvalidParseSyntax,
+    InvalidBasePath,
     InvalidParseStatusCode(String),
     InvalidParseMethod(String),
     ProblemOpeningFile(Box<Path>),
+    UnknownInternalError,
+    UnknownOpenApiFormat,
 }
 
 impl Error {
@@ -23,6 +26,9 @@ impl Error {
             Error::InvalidParseSyntax => format!("The syntax of the openapi file is incorrect."),
             Error::InvalidParseMethod(method) => format!("The openapi file contains an invalid method: {}", method),
             Error::InvalidParseStatusCode(code) => format!("The openapi file contains an invalid status code: {}", code),
+            Error::UnknownInternalError => format!("An unknown internal error occured, please open an issue on github for this."),
+            Error::InvalidBasePath => format!("Basepath provided in openapi spec isn't valid."),
+            Error::UnknownOpenApiFormat => format!("Rudra can only parse json and yaml formats,"),
         }
     }
 
