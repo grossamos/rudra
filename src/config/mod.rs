@@ -14,3 +14,13 @@ pub struct RudraConfig {
     pub account_for_security: bool
 }
 
+impl RudraConfig {
+    pub fn print(&self) {
+        println!("Configuration for Rudra:");
+        println!(" - debug: {}", self.debug);
+        println!(" - openapi_path: {:?}", self.openapi_path);
+        println!(" - app_base_url: {}", self.app_base_url);
+        println!(" - account_for_security: {}", self.account_for_security);
+    }
+}
+
