@@ -1,4 +1,4 @@
-use rudra::{initialize_rudra, run_eval, run_nginx};
+use rudra::{initialize_rudra, run_eval, run_nginx, publish_results};
 
 fn main() {
     let (config, openapi_endpoints) = initialize_rudra();
@@ -8,5 +8,6 @@ fn main() {
     }
     run_nginx(&config);
 
-    run_eval(&config, openapi_endpoints);
+    let eval = run_eval(&config, openapi_endpoints);
+    publish_results(&config, &eval);
 }

@@ -6,7 +6,7 @@ It allows teams to set and enforce coverage levels for integration tests in CI/C
 
 ## Local development
 ```bash
-docker run -it -p 8080:80 --network rudra --name rudra --rm Rudra
+docker run --env RUDRA_APP_BASE_URL=http://172.17.0.1:8080 --env RUDRA_OPENAPI_PATH=/swagger.yaml --volume $PWD/test/resource/swagger.yaml:/swagger.yaml -p 13750:80 --network rudra --name rudra --rm --env RUDRA_DEBUG=0 --env RUDRA_ACCOUNT_FOR_SECURITY=1 rudra
 docker run -it --name app --rm --network rudra -d rudra-example
 
 docker exec -it rudra nginx -s stop

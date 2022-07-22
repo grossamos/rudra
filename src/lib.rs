@@ -1,8 +1,8 @@
-use std::process::{Command, Stdio, self};
+use std::process::{Command, Stdio};
 
 use config::{RudraConfig, configure_nginx};
-use evaluator::compare_endpoints;
-use models::Endpoint;
+use evaluator::Evaluation;
+use models::EndpointConfiguration;
 use parser::parse_openapi;
 use utils::print_debug_message;
 
@@ -43,7 +43,7 @@ pub fn run_nginx(config: &RudraConfig) {
     }
 }
 
-pub fn initialize_rudra() -> (RudraConfig, Option<Vec<Endpoint>>) {
+pub fn initialize_rudra() -> (RudraConfig, Option<Vec<EndpointConfiguration>>) {
     let config = match RudraConfig::from_env() {
         Ok(config) => config,
         Err(error) => error.display_error_and_exit(),
@@ -57,7 +57,7 @@ pub fn initialize_rudra() -> (RudraConfig, Option<Vec<Endpoint>>) {
     (config, Some(openapi_endpoints))
 }
 
-pub fn run_eval(config: &RudraConfig, openapi_endpoints: Option<Vec<Endpoint>>) {
+pub fn run_eval(config: &RudraConfig, openapi_endpoints: Option<Vec<EndpointConfiguration>>) -> Evaluation {
     print_debug_message(config, "Evaluating endpoint coverage");
 
     // TODO replace with dynamic fetch of spec
@@ -68,15 +68,17 @@ pub fn run_eval(config: &RudraConfig, openapi_endpoints: Option<Vec<Endpoint>>) 
         Err(_) => print_error_and_exit("An unexpected error occured while parsing the nginx logs"),
     };
 
-    let endpoint_diff = compare_endpoints(&nginx_endpoints, &openapi_endpoints);
+    Evaluation::new(&openapi_endpoints, &nginx_endpoints)
+}
 
-    if endpoint_diff.len() != 0 {
-        println!("Some endpoint configurations were missed:");
-        for endpoint in endpoint_diff {
-            println!("- \"{}\", {:?}, {}", endpoint.path, endpoint.method, endpoint.status_code);
-        }
-        process::exit(1);
-    } else {
-        println!("Coverage 100%");
-    }
+pub fn publish_results(config: &RudraConfig, eval: &Evaluation) {
+    let coverage = eval.calc_test_coverage();
+    println!("-------------------");
+    println!("       Results     ");
+    println!("-------------------");
+    eval.print_results();
+    println!("Test coverage: {}%", coverage * 100.0);
+    if coverage < config.test_coverage {
+        print_error_and_exit("Coverage not sufficient");
+    } 
 }

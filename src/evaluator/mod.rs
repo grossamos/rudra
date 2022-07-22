@@ -1,2 +1,2 @@
 mod compare;
-pub use compare::compare_endpoints;
+pub use compare::Evaluation;

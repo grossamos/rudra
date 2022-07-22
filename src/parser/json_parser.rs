@@ -1,13 +1,13 @@
 use json::JsonValue;
 
 use crate::{
-    models::{Endpoint, Method},
+    models::{EndpointConfiguration, Method},
     utils::Error,
 };
 
 use super::common::format_basepath;
 
-pub fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, Error> {
+pub fn parse_json_doc(json_string: &str) -> Result<Vec<EndpointConfiguration>, Error> {
     let mut endpoints = vec![];
 
     let json_obj = match json::parse(json_string) {
@@ -47,8 +47,8 @@ pub fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, Error> {
             };
 
             if !&method_json["security"].is_null() {
-                endpoints.push(Endpoint::new(method.clone(), path.clone(), 401));
-                endpoints.push(Endpoint::new(method.clone(), path.clone(), 403));
+                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), 401));
+                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), 403));
             }
 
             for response in responses.entries() {
@@ -56,7 +56,7 @@ pub fn parse_json_doc(json_string: &str) -> Result<Vec<Endpoint>, Error> {
                     Ok(status_code) => status_code,
                     Err(_) => return Err(Error::InvalidParseStatusCode(response.0.to_string())),
                 };
-                endpoints.push(Endpoint::new(method.clone(), path.clone(), status_code))
+                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), status_code))
             }
         }
     }

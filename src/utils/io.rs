@@ -1,6 +1,6 @@
 use std::{path::Path, fs::File, io::Read};
 
-use crate::config::RudraConfig;
+use crate::{config::RudraConfig, models::EndpointConfiguration};
 
 use super::print_debug_message;
 
@@ -20,3 +20,8 @@ pub fn read_file_to_string_or_err<E>(config: &RudraConfig ,path: &Path, err: E) 
     }
 }
 
+pub fn print_endpoints<'a, T: Iterator<Item = &'a EndpointConfiguration>>(endpoints: &mut T) {
+    for endpoint in endpoints {
+        println!("- \"{}\", {:?}, {}", endpoint.path, endpoint.method, endpoint.status_code);
+    }
+}

@@ -5,12 +5,11 @@ mod common;
 
 pub use nginx_parser::parse_nginx_access_log;
 
-use crate::{models::Endpoint, utils::{Error, read_file_to_string_or_err}, config::RudraConfig};
+use crate::{models::EndpointConfiguration, utils::{Error, read_file_to_string_or_err}, config::RudraConfig};
 
 use self::{json_parser::parse_json_doc, yaml_parser::parse_yaml_doc};
 
-pub fn parse_openapi(config: &RudraConfig) -> Result<Vec<Endpoint>, Error> {
-    println!("{:?}", config.openapi_path.as_os_str());
+pub fn parse_openapi(config: &RudraConfig) -> Result<Vec<EndpointConfiguration>, Error> {
     let extension = match config.openapi_path.extension() {
         Some(extension) => extension,
         None => return Err(Error::UnknownOpenApiFormat),

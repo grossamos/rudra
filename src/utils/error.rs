@@ -14,6 +14,7 @@ pub enum Error {
     ProblemOpeningFile(Box<Path>),
     UnknownInternalError,
     UnknownOpenApiFormat,
+    InvalidTestCoverage,
 }
 
 impl Error {
@@ -29,6 +30,7 @@ impl Error {
             Error::UnknownInternalError => format!("An unknown internal error occured, please open an issue on github for this."),
             Error::InvalidBasePath => format!("Basepath provided in openapi spec isn't valid."),
             Error::UnknownOpenApiFormat => format!("Rudra can only parse json and yaml formats,"),
+            Error::InvalidTestCoverage => format!("Your test coverage has to be a value between 0 and 1 or a percentage between 0% and 100%"),
         }
     }
 

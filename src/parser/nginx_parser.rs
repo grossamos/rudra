@@ -1,14 +1,14 @@
 use std::{path::Path, fs::File, io::{BufReader, BufRead}};
 
-use crate::{models::{Endpoint, Method}, utils::{Error, print_debug_message}, config::RudraConfig};
+use crate::{models::{EndpointConfiguration, Method}, utils::{Error, print_debug_message}, config::RudraConfig};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-pub fn parse_nginx_access_log(config: &RudraConfig) -> Result<Vec<Endpoint>, Error> {
+pub fn parse_nginx_access_log(config: &RudraConfig) -> Result<Vec<EndpointConfiguration>, Error> {
     parse_access_log(config, Path::new("/var/log/nginx/access.log"))
 }
 
-fn parse_access_log(config: &RudraConfig, path: &Path) -> Result<Vec<Endpoint>, Error> {
+fn parse_access_log(config: &RudraConfig, path: &Path) -> Result<Vec<EndpointConfiguration>, Error> {
     let mut endpoints = Vec::new();
     let reader = match File::open(path) {
         Ok(file) => BufReader::new(file),
@@ -33,7 +33,7 @@ fn parse_access_log(config: &RudraConfig, path: &Path) -> Result<Vec<Endpoint>, 
     Ok(endpoints)
 }
 
-fn parse_nginx_line(line: &str) -> Result<Endpoint, Error> {
+fn parse_nginx_line(line: &str) -> Result<EndpointConfiguration, Error> {
     lazy_static! {
         static ref NGINX_LINE_REGEX: Regex = Regex::new("^(\\[.+\\]) \"(\\w{3, 4}) (/\\S*) HTTP/\\d\\.\\d\" (\\d{3})").unwrap();
     }
@@ -72,7 +72,7 @@ fn parse_nginx_line(line: &str) -> Result<Endpoint, Error> {
         None => return Err(Error::InvalidParseSyntax),
     };
 
-    Ok(Endpoint::new(method, path, status))
+    Ok(EndpointConfiguration::new(method, path, status))
 
 }
 

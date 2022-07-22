@@ -2,12 +2,12 @@ use linked_hash_map::LinkedHashMap;
 use yaml_rust::{Yaml, YamlLoader};
 
 use crate::{
-    models::{Endpoint, Method},
+    models::{EndpointConfiguration, Method},
     parser::common::format_basepath,
     utils::Error,
 };
 
-pub fn parse_yaml_doc(yaml_string: &str) -> Result<Vec<Endpoint>, Error> {
+pub fn parse_yaml_doc(yaml_string: &str) -> Result<Vec<EndpointConfiguration>, Error> {
     let spec = match YamlLoader::load_from_str(yaml_string) {
         Ok(spec) => spec,
         Err(_) => return Err(Error::InvalidParseSyntax),
@@ -58,8 +58,8 @@ pub fn parse_yaml_doc(yaml_string: &str) -> Result<Vec<Endpoint>, Error> {
             let method_infos = retrive_value_as_hash_map(methods, method_key)?;
             let statuses = retrive_value_as_hash_map(method_infos, &Yaml::from_str("responses"))?;
             if method_infos.get(&Yaml::from_str("security")).is_some() {
-                endpoints.push(Endpoint::new(method.clone(), path.clone(), 401));
-                endpoints.push(Endpoint::new(method.clone(), path.clone(), 403));
+                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), 401));
+                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), 403));
             }
 
             for status_key in statuses.keys() {
@@ -71,7 +71,7 @@ pub fn parse_yaml_doc(yaml_string: &str) -> Result<Vec<Endpoint>, Error> {
                         ))
                     }
                 };
-                endpoints.push(Endpoint::new(method.clone(), path.clone(), status_code));
+                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), status_code));
             }
         }
     }

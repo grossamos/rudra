@@ -1,43 +1,77 @@
-use crate::models::Endpoint;
+use crate::{models::EndpointConfiguration, utils::print_endpoints};
 
-pub fn compare_endpoints(set_a: &Vec<Endpoint>, set_b: &Vec<Endpoint>) -> Vec<Endpoint> {
-    let mut set_a = (*set_a).clone();
-    let mut set_b = (*set_b).clone();
-    set_a.sort();
-    set_b.sort();
+#[derive(Debug)]
+pub struct Evaluation {
+    missed_endpoint_configurations: Vec<EndpointConfiguration>,
+    missed_openapi_configurations: Vec<EndpointConfiguration>,
+    original_openapi_endpoint_count: usize,
+}
 
-    filter_consecutive_duplicates(&mut set_a);
-    filter_consecutive_duplicates(&mut set_b);
+impl Evaluation {
+    pub fn new(openapi_endpoints: &Vec<EndpointConfiguration>, logged_endpoints: &Vec<EndpointConfiguration>) -> Evaluation {
+        let (missed_endpoint_configurations, missed_openapi_configurations) = remove_matching_endpoints(openapi_endpoints, logged_endpoints);
+        Evaluation { missed_endpoint_configurations, missed_openapi_configurations, original_openapi_endpoint_count: openapi_endpoints.len() }
+    }
+    
+    pub fn print_results(&self) {
+        if self.missed_endpoint_configurations.len() > 0 {
+            println!("Missed endpoint configurations:");
+            print_endpoints(&mut self.missed_endpoint_configurations.iter());
+        }
+        if self.missed_openapi_configurations.len() > 0 {
+            println!("The following configurations were logged during the tests, but do not exist in the openapi spec:");
+            print_endpoints(&mut self.missed_openapi_configurations.iter());
+        }
+        if self.missed_endpoint_configurations.len() + self.missed_openapi_configurations.len() > 0 {
+            println!("");
+        }
+    }
+    
+    pub fn calc_test_coverage(&self) -> f32 {
+        if self.original_openapi_endpoint_count == 0 {
+            return 1.0
+        }
+        (self.original_openapi_endpoint_count - self.missed_endpoint_configurations.len()) as f32 / (self.original_openapi_endpoint_count as f32)
+    }
+}
 
-    let mut index_a = 0;
 
-    while index_a < set_a.len() {
-        let mut index_b = 0;
-        let item_a = set_a.get(index_a).unwrap();
+fn remove_matching_endpoints(required_set: &Vec<EndpointConfiguration>, actual_set: &Vec<EndpointConfiguration>) -> (Vec<EndpointConfiguration>, Vec<EndpointConfiguration>) {
+    let mut required_set = (*required_set).clone();
+    let mut actual_set = (*actual_set).clone();
+    required_set.sort();
+    actual_set.sort();
+
+    filter_consecutive_duplicates(&mut required_set);
+    filter_consecutive_duplicates(&mut actual_set);
+
+    let mut index_required = 0;
+
+    while index_required < required_set.len() {
+        let mut index_actual = 0;
+        let item_required = required_set.get(index_required).unwrap();
 
         let mut is_found = false;
 
-        while index_b < set_b.len() && item_a >= set_b.get(index_b).unwrap() {
-            let item_b = set_b.get(index_b).unwrap();
+        while index_actual < actual_set.len() && item_required >= actual_set.get(index_actual).unwrap() {
+            let item_actual = actual_set.get(index_actual).unwrap();
 
-            if item_a == item_b {
+            if item_required == item_actual {
                 is_found = true;
-                set_b.remove(index_b);
+                actual_set.remove(index_actual);
             } else {
-                index_b += 1;
+                index_actual += 1;
             }
         }
 
         if is_found {
-            set_a.remove(index_a);
+            required_set.remove(index_required);
         } else {
-            index_a += 1;
+            index_required += 1;
         }
     }
 
-    set_a.append(&mut set_b);
-
-    set_a
+    (required_set, actual_set)
 }
 
 fn filter_consecutive_duplicates<T: PartialEq>(set: &mut Vec<T>) {
@@ -60,66 +94,72 @@ fn filter_consecutive_duplicates<T: PartialEq>(set: &mut Vec<T>) {
 
 #[cfg(test)]
 mod test {
-    use crate::{models::{Endpoint, Method}, evaluator::compare::filter_consecutive_duplicates};
+    use float_eq::assert_float_eq;
 
-    use super::compare_endpoints;
+    use crate::{models::{EndpointConfiguration, Method}, evaluator::compare::filter_consecutive_duplicates};
 
-    fn create_endpoint_a() -> Endpoint {
-        Endpoint::new(Method::GET, String::from("/"), 200)
+    use super::{remove_matching_endpoints, Evaluation};
+
+    fn create_endpoint_a() -> EndpointConfiguration {
+        EndpointConfiguration::new(Method::GET, String::from("/a"), 200)
     }
 
-    fn create_endpoint_b() -> Endpoint {
-        Endpoint::new(Method::POST, String::from("/"), 200)
+    fn create_endpoint_b() -> EndpointConfiguration {
+        EndpointConfiguration::new(Method::POST, String::from("/b"), 200)
     }
 
-    fn create_endpoint_c() -> Endpoint {
-        Endpoint::new(Method::POST, String::from("/99"), 200)
+    fn create_endpoint_c() -> EndpointConfiguration {
+        EndpointConfiguration::new(Method::POST, String::from("/c"), 200)
     }
 
-    fn create_endpoint_d() -> Endpoint {
-        Endpoint::new(Method::GET, String::from("/99"), 201)
+    fn create_endpoint_d() -> EndpointConfiguration {
+        EndpointConfiguration::new(Method::GET, String::from("/d"), 201)
     }
 
     #[test]
     fn flags_equal_sets_same_order_as_right() {
-        let set_a = vec![
+        let required_set = vec![
             create_endpoint_a(),
             create_endpoint_b(),
             create_endpoint_c(),
             create_endpoint_d(),
         ];
 
-        let set_b = vec![
+        let actual_set = vec![
             create_endpoint_a(),
             create_endpoint_b(),
             create_endpoint_c(),
             create_endpoint_d(),
         ];
 
-        assert_eq!(compare_endpoints(&set_a, &set_b).len(), 0);
+        let (required_set, actual_set) = remove_matching_endpoints(&required_set, &actual_set);
+        assert_eq!(required_set.len(), 0);
+        assert_eq!(actual_set.len(), 0);
     }
 
     #[test]
     fn flags_equal_sets_different_order_as_right() {
-        let set_a = vec![
+        let required_set = vec![
             create_endpoint_d(),
             create_endpoint_b(),
             create_endpoint_c(),
             create_endpoint_a(),
         ];
 
-        let set_b = vec![
+        let actual_set = vec![
             create_endpoint_b(),
             create_endpoint_a(),
             create_endpoint_c(),
             create_endpoint_d(),
         ];
 
-        assert_eq!(compare_endpoints(&set_a, &set_b).len(), 0);
+        let (required_set, actual_set) = remove_matching_endpoints(&required_set, &actual_set);
+        assert_eq!(required_set.len(), 0);
+        assert_eq!(actual_set.len(), 0);
     }
 
     #[test]
-    fn flags_different_lengths_as_incorrect() {
+    fn diff_keeps_non_overlaping_present_in_both_directions() {
         let set_a = vec![
             create_endpoint_a(),
             create_endpoint_b(),
@@ -133,12 +173,20 @@ mod test {
             create_endpoint_d(),
         ];
 
-        assert_ne!(compare_endpoints(&set_a, &set_b).len(), 0);
-        assert_ne!(compare_endpoints(&set_b, &set_a).len(), 0);
+        let (required_set, actual_set) = remove_matching_endpoints(&set_a, &set_b);
+        assert_eq!(required_set.len(), 0);
+        assert_eq!(actual_set.len(), 1);
+
+        let (required_set, actual_set) = remove_matching_endpoints(&set_b, &set_a);
+        assert_eq!(required_set.len(), 1);
+        assert_eq!(actual_set.len(), 0);
+
+        let endpoint_d = create_endpoint_d();
+        assert!(required_set.iter().any(|x| *x == endpoint_d));
     }
 
     #[test]
-    fn flags_different_sets_as_incorrect() {
+    fn flags_different_sets_have_positive_diff() {
         let set_a = vec![
             create_endpoint_a(),
             create_endpoint_b(),
@@ -151,8 +199,13 @@ mod test {
             create_endpoint_d(),
         ];
 
-        assert_ne!(compare_endpoints(&set_a, &set_b).len(), 0);
-        assert_ne!(compare_endpoints(&set_b, &set_a).len(), 0);
+        let (required_set, actual_set) = remove_matching_endpoints(&set_a, &set_b);
+        assert_eq!(required_set.len(), 1);
+        assert_eq!(actual_set.len(), 1);
+
+        let (required_set, actual_set) = remove_matching_endpoints(&set_b, &set_a);
+        assert_eq!(required_set.len(), 1);
+        assert_eq!(actual_set.len(), 1);
     }
 
     #[test]
@@ -168,8 +221,10 @@ mod test {
             create_endpoint_b(),
             create_endpoint_d(),
         ];
-        assert!(compare_endpoints(&set_a, &set_b).iter().any(|x| *x == create_endpoint_d()));
-        assert!(compare_endpoints(&set_a, &set_b).iter().any(|x| *x == create_endpoint_c()));
+        let (required_set, actual_set) = remove_matching_endpoints(&set_a, &set_b);
+
+        assert!(required_set.iter().any(|x| *x == create_endpoint_c()));
+        assert!(actual_set.iter().any(|x| *x == create_endpoint_d()));
 
     }
 
@@ -187,8 +242,14 @@ mod test {
             create_endpoint_a(),
             create_endpoint_b(),
         ];
-        assert_eq!(compare_endpoints(&set_a, &set_b).len(), 0);
-        assert_eq!(compare_endpoints(&set_b, &set_a).len(), 0);
+
+        let (required_set, actual_set) = remove_matching_endpoints(&set_a, &set_b);
+        assert_eq!(required_set.len(), 0);
+        assert_eq!(actual_set.len(), 0);
+
+        let (required_set, actual_set) = remove_matching_endpoints(&set_b, &set_a);
+        assert_eq!(required_set.len(), 0);
+        assert_eq!(actual_set.len(), 0);
 
     }
 
@@ -234,6 +295,60 @@ mod test {
             create_endpoint_d(),
         ];
 
-        assert_eq!(compare_endpoints(&set_a, &set_b).len(), 4);
+        let (required_set, actual_set) = remove_matching_endpoints(&set_a, &set_b);
+        assert_eq!(required_set.len(), 0);
+        assert_eq!(actual_set.len(), 4);
+    }
+
+    // which endpoints are missed
+    // what percentage of endpoints are hit
+    // which configurations are not covered by openapi
+    
+    #[test]
+    fn empty_configurations_lead_to_full_test_coverage() {
+        let openapi_endpoints = vec![];
+        let logged_endpoints = vec![];
+
+        let eval = Evaluation::new(&openapi_endpoints, &logged_endpoints);
+        assert_eq!(eval.calc_test_coverage(), 1.0);
+
+        let logged_endpoints = vec![
+            create_endpoint_a(),
+            create_endpoint_b(),
+        ];
+        let eval = Evaluation::new(&openapi_endpoints, &logged_endpoints);
+        assert_float_eq!(eval.calc_test_coverage(), 1.0, abs <= 0.0001);
+    }
+
+    #[test]
+    fn eval_is_relative_to_tested_endpoints() {
+        let openapi_endpoints = vec![
+            create_endpoint_a(),
+            create_endpoint_b(),
+            create_endpoint_c(),
+            create_endpoint_d(),
+        ];
+        let logged_endpoints = vec![
+            create_endpoint_a(),
+            create_endpoint_b(),
+        ];
+
+        let eval = Evaluation::new(&openapi_endpoints, &logged_endpoints);
+        assert_float_eq!(eval.calc_test_coverage(), 0.5, abs <= 0.0002);
+
+        let openapi_endpoints = vec![
+            create_endpoint_a(),
+            create_endpoint_b(),
+            create_endpoint_c(),
+            create_endpoint_d(),
+        ];
+        let logged_endpoints = vec![
+            create_endpoint_a(),
+            create_endpoint_b(),
+            create_endpoint_c(),
+        ];
+
+        let eval = Evaluation::new(&openapi_endpoints, &logged_endpoints);
+        assert_float_eq!(eval.calc_test_coverage(), 0.75, abs <= 0.0002);
     }
 }
