@@ -3,6 +3,7 @@ FROM rust:1-buster as builder
 WORKDIR /app
 
 RUN rustup target add x86_64-unknown-linux-musl
+RUN apt update && apt install openssl -y
 
 COPY ./Cargo.lock ./
 COPY ./Cargo.toml ./

@@ -5,8 +5,8 @@ inputs:
     description: 'Preperation or evaluation mode'
     required: true
     default: 'evaluation'
-  openapi-path: 
-    description: 'Path of openapi file'
+  openapi-source: 
+    description: 'Path or URL of openapi file (either json or yaml)'
     required: false
   instance-url: 
     description: 'URL of application that will be tested'
@@ -35,7 +35,12 @@ runs:
                 docker network connect rudra $line; 
             done 
             RUDRA_APP_BASE_URL=${{inputs.instance-url}}
-            docker run --env RUDRA_DEBUG=${{inputs.debug}} --env RUDRA_APP_BASE_URL=${RUDRA_APP_BASE_URL/localhost/172.17.0.1} --env RUDRA_OPENAPI_PATH=/swagger.json --env RUDRA_ACCOUNT_FOR_SECURITY=${{inputs.account-for-security}} --env RUDRA_TEST_COVERAGE="${{inputs.test-coverage}}"  --volume $PWD/${{inputs.openapi-path}}:/swagger.json -p 13750:80 --network rudra --name rudra -d grossamos/rudra 
+            if  [[ -f "${{inputs.openapi-source}}"]]; then
+                SPEC_VOLUME=--volume $PWD/#{{inputs.openapi-source}}:/${{basename inputs.openapi-source}}
+            else
+                SPEC_VOLUME=""
+            fi
+            docker run --env RUDRA_DEBUG=${{inputs.debug}} --env RUDRA_APP_BASE_URL=${RUDRA_APP_BASE_URL/localhost/172.17.0.1} --env RUDRA_OPENAPI_SOURCE=${{inputs.openapi-source}} --env RUDRA_ACCOUNT_FOR_SECURITY=${{inputs.account-for-security}} --env RUDRA_TEST_COVERAGE="${{inputs.test-coverage}}" $SPEC_VOLUME -p 13750:80 --network rudra --name rudra -d grossamos/rudra 
             sleep 1
             docker logs rudra
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 

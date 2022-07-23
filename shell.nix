@@ -6,6 +6,7 @@ pkgs.mkShell {
     pkgs.rustc
     pkgs.rustfmt
     pkgs.rust-analyzer
+    pkgs.openssl
   ];
 }
 

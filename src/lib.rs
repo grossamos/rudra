@@ -3,7 +3,7 @@ use std::process::{Command, Stdio};
 use config::{RudraConfig, configure_nginx};
 use evaluator::Evaluation;
 use models::EndpointConfiguration;
-use parser::parse_openapi;
+use parser::{parse_openapi, fetch_openapi_endpoints_ota};
 use utils::print_debug_message;
 
 use crate::{parser::parse_nginx_access_log, utils::print_error_and_exit};
@@ -43,25 +43,26 @@ pub fn run_nginx(config: &RudraConfig) {
     }
 }
 
-pub fn initialize_rudra() -> (RudraConfig, Option<Vec<EndpointConfiguration>>) {
+pub fn initialize_rudra() -> (RudraConfig, Vec<EndpointConfiguration>) {
     let config = match RudraConfig::from_env() {
         Ok(config) => config,
         Err(error) => error.display_error_and_exit(),
     };
 
     let openapi_endpoints = match parse_openapi(&config) {
-        Ok(openapi_endpoints) => openapi_endpoints,
+        Ok(Some(openapi_endpoints)) => openapi_endpoints,
+        Ok(None) => match fetch_openapi_endpoints_ota(&config) {
+            Ok(openapi_endpoints) => openapi_endpoints,
+            Err(error) => error.display_error_and_exit(),
+        },
         Err(error) => error.display_error_and_exit(),
     };
 
-    (config, Some(openapi_endpoints))
+    (config, openapi_endpoints)
 }
 
-pub fn run_eval(config: &RudraConfig, openapi_endpoints: Option<Vec<EndpointConfiguration>>) -> Evaluation {
+pub fn run_eval(config: &RudraConfig, openapi_endpoints: Vec<EndpointConfiguration>) -> Evaluation {
     print_debug_message(config, "Evaluating endpoint coverage");
-
-    // TODO replace with dynamic fetch of spec
-    let openapi_endpoints = openapi_endpoints.unwrap();
 
     let nginx_endpoints = match parse_nginx_access_log(config) {
         Ok(nginx_endpoints) => nginx_endpoints,

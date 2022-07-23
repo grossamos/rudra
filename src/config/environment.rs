@@ -3,11 +3,11 @@ use float_eq::float_eq;
 use std::{collections::HashMap, env, path::Path, str::FromStr};
 use url::Url;
 
-use super::RudraConfig;
+use super::{RudraConfig, OpenapiSource};
 
 const ENV_VAR_APP_BASE_URL: &str = "RUDRA_APP_BASE_URL";
 const ENV_VAR_DEBUG: &str = "RUDRA_DEBUG";
-const ENV_VAR_OPENAPI_PATH: &str = "RUDRA_OPENAPI_PATH";
+const ENV_VAR_OPENAPI_SOURCE: &str = "RUDRA_OPENAPI_SOURCE";
 const ENV_VAR_ACCOUNT_FOR_SECURITY: &str = "RUDRA_ACCOUNT_FOR_SECURITY";
 const ENV_VAR_TEST_COVERAGE: &str = "RUDRA_TEST_COVERAGE";
 
@@ -20,8 +20,8 @@ impl RudraConfig {
         if !env_vars.contains_key(ENV_VAR_APP_BASE_URL) {
             missing_keys.push(String::from(ENV_VAR_APP_BASE_URL));
         }
-        if !env_vars.contains_key(ENV_VAR_OPENAPI_PATH) {
-            missing_keys.push(String::from(ENV_VAR_OPENAPI_PATH));
+        if !env_vars.contains_key(ENV_VAR_OPENAPI_SOURCE) {
+            missing_keys.push(String::from(ENV_VAR_OPENAPI_SOURCE));
         }
         if missing_keys.len() > 0 {
             return Err(Error::MissingEnvironmentVaribles(missing_keys));
@@ -30,7 +30,10 @@ impl RudraConfig {
         // fetch values from enviroment variables
         let debug = get_bool_env_var(ENV_VAR_DEBUG, env_vars);
         let account_for_security = get_bool_env_var(ENV_VAR_ACCOUNT_FOR_SECURITY, env_vars);
-        let openapi_path = Box::from(Path::new(&env_vars[ENV_VAR_OPENAPI_PATH]));
+        let openapi_source = match Url::from_str(&env_vars[ENV_VAR_OPENAPI_SOURCE]) {
+            Ok(openapi_url) => OpenapiSource::Url(openapi_url),
+            Err(_) => OpenapiSource::Path(Box::from(Path::new(&env_vars[ENV_VAR_OPENAPI_SOURCE]))),
+        };
         let app_base_url = match Url::from_str(&env_vars[ENV_VAR_APP_BASE_URL]) {
             Ok(app_base_url) => app_base_url,
             Err(parse_error) => return Err(Error::InvalidApplicationURL(parse_error.to_string())),
@@ -42,7 +45,7 @@ impl RudraConfig {
 
         Ok(RudraConfig {
             debug,
-            openapi_path,
+            openapi_source,
             app_base_url,
             account_for_security,
             test_coverage,
@@ -97,14 +100,14 @@ fn translate_test_coverage(coverage_str: &str) -> Result<f32, Error> {
 #[cfg(test)]
 mod test {
     use float_eq::assert_float_eq;
-    use std::collections::HashMap;
+    use std::{collections::HashMap, path::Path};
 
-    use crate::config::environment::{
+    use crate::config::{environment::{
         get_bool_env_var, translate_test_coverage, DEFAULT_TEST_COVERAGE,
-    };
+    }, OpenapiSource};
 
     use super::{
-        RudraConfig, ENV_VAR_APP_BASE_URL, ENV_VAR_DEBUG, ENV_VAR_OPENAPI_PATH,
+        RudraConfig, ENV_VAR_APP_BASE_URL, ENV_VAR_DEBUG, ENV_VAR_OPENAPI_SOURCE,
     };
 
     fn generate_config_map() -> HashMap<String, String> {
@@ -112,7 +115,7 @@ mod test {
 
         config_map.insert(String::from(ENV_VAR_DEBUG), String::from("1"));
         config_map.insert(
-            String::from(ENV_VAR_OPENAPI_PATH),
+            String::from(ENV_VAR_OPENAPI_SOURCE),
             String::from("./test/resource/swagger.json"),
         );
         config_map.insert(
@@ -128,10 +131,8 @@ mod test {
         assert_eq!(
             RudraConfig::from_raw(&config_map)
                 .unwrap()
-                .openapi_path
-                .to_str()
-                .unwrap(),
-            "./test/resource/swagger.json"
+                .openapi_source,
+            OpenapiSource::Path(Box::from(Path::new("./test/resource/swagger.json")))
         );
     }
 

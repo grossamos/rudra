@@ -15,6 +15,9 @@ pub enum Error {
     UnknownInternalError,
     UnknownOpenApiFormat,
     InvalidTestCoverage,
+    OpenapiFetchConnectionFailure,
+    OpenapiFetchInvalidUrl,
+    OpenapiMalformedOnlineComponents,
 }
 
 impl Error {
@@ -30,7 +33,10 @@ impl Error {
             Error::UnknownInternalError => format!("An unknown internal error occured, please open an issue on github for this."),
             Error::InvalidBasePath => format!("Basepath provided in openapi spec isn't valid."),
             Error::UnknownOpenApiFormat => format!("Rudra can only parse json and yaml formats,"),
-            Error::InvalidTestCoverage => format!("Your test coverage has to be a value between 0 and 1 or a percentage between 0% and 100%"),
+            Error::InvalidTestCoverage => format!("Your test coverage has to be a value between 0 and 1 or a percentage between 0% and 100%."),
+            Error::OpenapiFetchConnectionFailure => format!("No connection to the specified openapi url could be made."),
+            Error::OpenapiFetchInvalidUrl => format!("The specified openapi url is invalid."),
+            Error::OpenapiMalformedOnlineComponents => format!("Some contents of the specified openapi resource are malformed."),
         }
     }
 
