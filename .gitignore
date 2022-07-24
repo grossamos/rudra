@@ -1,2 +1,4 @@
 /target
 /nginx/access.log
+result
+.direnv
