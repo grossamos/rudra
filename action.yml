@@ -36,7 +36,7 @@ runs:
             done 
             RUDRA_APP_BASE_URL=${{inputs.instance-url}}
             if  [[ -f "${{inputs.openapi-source}}"]]; then
-                SPEC_VOLUME=--volume $PWD/#{{inputs.openapi-source}}:/${{basename inputs.openapi-source}}
+                SPEC_VOLUME=--volume $PWD/#{{inputs.openapi-source}}:/$(basename ${{inputs.openapi-source}})
             else
                 SPEC_VOLUME=""
             fi
