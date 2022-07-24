@@ -40,7 +40,7 @@ runs:
             else
                 SPEC_VOLUME=""
             fi
-            docker run --env RUDRA_DEBUG=${{inputs.debug}} --env RUDRA_APP_BASE_URL=${RUDRA_APP_BASE_URL/localhost/172.17.0.1} --env RUDRA_OPENAPI_SOURCE=${{inputs.openapi-source}} --env RUDRA_ACCOUNT_FOR_SECURITY=${{inputs.account-for-security}} --env RUDRA_TEST_COVERAGE="${{inputs.test-coverage}}" $SPEC_VOLUME -p 13750:80 --network rudra --name rudra -d grossamos/rudra 
+            docker run --env RUDRA_DEBUG=${{inputs.debug}} --env RUDRA_APP_BASE_URL=${RUDRA_APP_BASE_URL/localhost/172.17.0.1} --env RUDRA_OPENAPI_SOURCE=${{inputs.openapi-source}} --env RUDRA_ACCOUNT_FOR_SECURITY=${{inputs.account-for-security}} --env RUDRA_TEST_COVERAGE="${{inputs.test-coverage}}" $SPEC_VOLUME -p 13750:80 --network rudra --name rudra -d grossamos/rudra:v0.0.5
             sleep 1
             docker logs rudra
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
