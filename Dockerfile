@@ -17,6 +17,7 @@ WORKDIR /app
 
 # Unlink access log from stdout (to allow for analysis)
 RUN rm /var/log/nginx/access.log
+RUN echo rudra failed to connect to your specified service > /usr/share/nginx/html/50x.html
 
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/rudra /
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
