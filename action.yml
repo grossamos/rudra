@@ -26,7 +26,7 @@ runs:
     - shell: bash
       run: |
         if [[ "${{inputs.stage}}" = "preperation" ]]; then 
-            if [[ "${{inputs.openapi-path}}" = "" || "${{inputs.instance-url}}" = "" ]]; then 
+            if [[ "${{inputs.openapi-source}}" = "" || "${{inputs.instance-url}}" = "" ]]; then 
                 echo "please provide both openapi-path and instance-url as inputs" 
                 exit 1 
             fi 
@@ -45,8 +45,8 @@ runs:
             docker logs rudra
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
         elif [[ "${{inputs.stage}}" = "evaluation" ]]; then 
-            if [[ "${{inputs.openapi-path}}" != "" || "${{inputs.instance-url}}" != "" || "${{inputs.account-for-security}}" != "" ]]; then 
-                echo "please configure rudra in the preperation stage and do not add openapi-path or instance-url here" 
+            if [[ "${{inputs.openapi-path}}" != "" || "${{inputs.instance-url}}" != "" || "${{inputs.test-coverage}}" != "" || "${{inputs.debug}}" != "" || "${{inputs.account-for-security}}" != "" ]]; then 
+                echo "please configure rudra in the preperation stage and do not add configuration parameters (outside of stage) here" 
                 exit 1 
             fi 
             docker exec rudra nginx -s stop 
