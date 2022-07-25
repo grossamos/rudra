@@ -8,6 +8,8 @@ fn main() {
     }
     run_nginx(&config);
 
+
+
     let eval = run_eval(&config, openapi_endpoints);
     publish_results(&config, &eval);
 }

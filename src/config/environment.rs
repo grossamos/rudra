@@ -63,7 +63,7 @@ impl RudraConfig {
 
 fn get_bool_env_var(key: &str, env_vars: &HashMap<String, String>) -> bool {
     match env_vars.get(key) {
-        Some(bool_var) => bool_var.as_str() != "0" && bool_var.as_str() != "",
+        Some(bool_var) => bool_var.as_str() != "0" && bool_var.as_str() != "" && bool_var.as_str() != "false",
         None => false,
     }
 }
