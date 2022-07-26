@@ -60,6 +60,6 @@ runs:
             echo "please provide a stage name of either \"preperation\" or \"evaluation\"" 
             exit 1 
         fi 
-      brandring:
-        icon: 'wind'
-        color: 'purple'
+brandring:
+  icon: 'wind'
+  color: 'purple'
