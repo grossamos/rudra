@@ -1,6 +1,9 @@
 name: 'Rudra for OpenAPI test coverage'
 author: 'Amos Gross'
 description: 'Openapi based test coverage for integration tests'
+branding:
+  icon: 'wind'
+  color: 'purple'
 inputs:
   stage:
     description: 'Preperation or evaluation mode'
@@ -60,6 +63,4 @@ runs:
             echo "please provide a stage name of either \"preperation\" or \"evaluation\"" 
             exit 1 
         fi 
-brandring:
-  icon: 'wind'
-  color: 'purple'
+
