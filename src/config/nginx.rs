@@ -18,6 +18,10 @@ fn replace_error_log(base: &String) -> String {
     base.replace("error_log  off;", "error_log  /var/log/nginx/error.log notice;")
 }
 
+fn replace_port_number(base: &String, port: u16) -> String {
+    base.replace("INSERT_PORT_HERE", &port.to_string())
+}
+
 fn open_config_file(path: &Path, for_writing: bool) -> Result<File, Error> {
     match OpenOptions::new().write(for_writing).read(true).truncate(for_writing).open(path) {
         Ok(file) => Ok(file),
@@ -45,10 +49,10 @@ fn replace_url_in_file(config: &RudraConfig, path: &Path) -> Result<(), Error> {
     }
 
     let mut config_string = replace_url(&config_string, config.app_base_url.as_str());
-
     if config.debug {
         config_string = replace_error_log(&config_string);
     }
+    config_string = replace_port_number(&config_string, config.port);
 
     let mut file = open_config_file(path, true)?;
     match file.write_all(config_string.as_bytes()) {
@@ -74,7 +78,7 @@ mod tests {
 
     use url::Url;
 
-    use crate::{config::nginx::{replace_url, replace_url_in_file, replace_error_log}, utils::test::create_mock_config};
+    use crate::{config::nginx::{replace_url, replace_url_in_file, replace_error_log, replace_port_number}, utils::test::create_mock_config};
 
     use super::open_config_file;
 
@@ -102,7 +106,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             conf_string,
-            "...some other conf\nproxy_pass https://example.com/\n...some more conf\n"
+            "...some other conf\nproxy_pass https://example.com/\n13750\n...some more conf\n"
         );
 
         write_default_config();
@@ -111,7 +115,7 @@ mod tests {
     fn write_default_config() {
         let mut file = open_config_file(Path::new("./test/resource/nginx.conf"), true).unwrap();
         file.write_all(
-            "...some other conf\nproxy_pass INSERT_URL_HERE\n...some more conf\n".as_bytes(),
+            "...some other conf\nproxy_pass INSERT_URL_HERE\nINSERT_PORT_HERE\n...some more conf\n".as_bytes(),
         )
         .unwrap();
         file.flush().unwrap();
@@ -123,6 +127,15 @@ mod tests {
         assert_eq!(
             replace_error_log(&test_string),
             "... stuff ... error_log  /var/log/nginx/error.log notice; ... stuff ..."
+        );
+    }
+
+    #[test]
+    fn repaces_port_number() {
+        let test_string = String::from("... stuff ... INSERT_PORT_HERE ... stuff ...");
+        assert_eq!(
+            replace_port_number(&test_string, 13567),
+            "... stuff ... 13567 ... stuff ..."
         );
     }
 }

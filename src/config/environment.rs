@@ -10,6 +10,7 @@ const ENV_VAR_DEBUG: &str = "RUDRA_DEBUG";
 const ENV_VAR_OPENAPI_SOURCE: &str = "RUDRA_OPENAPI_SOURCE";
 const ENV_VAR_ACCOUNT_FOR_SECURITY: &str = "RUDRA_ACCOUNT_FOR_SECURITY";
 const ENV_VAR_TEST_COVERAGE: &str = "RUDRA_TEST_COVERAGE";
+const ENV_VAR_PORT: &str = "RUDRA_PORT";
 
 const DEFAULT_TEST_COVERAGE: f32 = 0.7;
 
@@ -42,6 +43,13 @@ impl RudraConfig {
             Some(coverage_str) => translate_test_coverage(coverage_str)?,
             None => 0.7,
         };
+        let port = match env_vars.get(ENV_VAR_PORT) {
+            Some(port_str) => match port_str.parse() {
+                Ok(port) => port,
+                Err(_) => return Err(Error::InvalidPortNumber(String::from(port_str))),
+            },
+            _ => 13750,
+        };
 
         Ok(RudraConfig {
             debug,
@@ -49,6 +57,7 @@ impl RudraConfig {
             app_base_url,
             account_for_security,
             test_coverage,
+            port,
         })
     }
 
@@ -103,7 +112,7 @@ mod test {
     use std::{collections::HashMap, path::Path};
 
     use crate::config::{environment::{
-        get_bool_env_var, translate_test_coverage, DEFAULT_TEST_COVERAGE,
+        get_bool_env_var, translate_test_coverage, DEFAULT_TEST_COVERAGE, ENV_VAR_PORT,
     }, OpenapiSource};
 
     use super::{
@@ -256,5 +265,28 @@ mod test {
             0.7,
             abs <= 0.0001
         );
+    }
+
+    #[test]
+    fn configuration_defaults_to_port_13750() {
+        let config_map = generate_config_map();
+        assert_eq!(RudraConfig::from_raw(&config_map).unwrap().port, 13750);
+    }
+
+    #[test]
+    fn configuration_recognises_port_number() {
+        let mut config_map = generate_config_map();
+        config_map.insert(ENV_VAR_PORT.to_string(), "9999".to_string());
+        assert_eq!(RudraConfig::from_raw(&config_map).unwrap().port, 9999);
+    }
+
+    #[test]
+    fn configuration_throws_error_for_invalid_port() {
+        let mut config_map = generate_config_map();
+        config_map.insert(ENV_VAR_PORT.to_string(), "albert".to_string());
+        assert!(RudraConfig::from_raw(&config_map).is_err());
+        config_map.insert(ENV_VAR_PORT.to_string(), "65537".to_string()); // 2^ 16 + 1 (tcp only
+                                                                        // allows 16 bits)
+        assert!(RudraConfig::from_raw(&config_map).is_err());
     }
 }

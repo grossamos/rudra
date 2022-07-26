@@ -18,6 +18,7 @@ pub enum Error {
     OpenapiFetchConnectionFailure,
     OpenapiFetchInvalidUrl,
     OpenapiMalformedOnlineComponents,
+    InvalidPortNumber(String),
 }
 
 impl Error {
@@ -37,6 +38,7 @@ impl Error {
             Error::OpenapiFetchConnectionFailure => format!("No connection to the specified openapi url could be made."),
             Error::OpenapiFetchInvalidUrl => format!("The specified openapi url is invalid."),
             Error::OpenapiMalformedOnlineComponents => format!("Some contents of the specified openapi resource are malformed."),
+            Error::InvalidPortNumber(port_str) => format!("The specified port number is invalid: \"{}\"", port_str),
         }
     }
 
