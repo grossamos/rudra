@@ -3,7 +3,7 @@ use crate::{config::{RudraConfig, OpenapiSource}, models::EndpointConfiguration,
 use super::{json_parser::parse_json_doc, yaml_parser::parse_yaml_doc};
 
 pub fn fetch_openapi_endpoints_ota(config: &RudraConfig) -> Result<Vec<EndpointConfiguration>, Error> {
-    let mut openapi_url = match &config.openapi_source {
+    let mut openapi_url = match &config.runtimes[0].openapi_source {
         OpenapiSource::Path(_) => return Err(Error::UnknownInternalError),
         OpenapiSource::Url(openapi_url) => openapi_url.clone(),
     };

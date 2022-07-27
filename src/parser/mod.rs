@@ -12,7 +12,7 @@ use crate::{models::EndpointConfiguration, utils::{Error, read_file_to_string_or
 use self::{json_parser::parse_json_doc, yaml_parser::parse_yaml_doc};
 
 pub fn parse_openapi(config: &RudraConfig) -> Result<Option<Vec<EndpointConfiguration>>, Error> {
-    let openapi_path = match &config.openapi_source {
+    let openapi_path = match &config.runtimes[0].openapi_source {
         OpenapiSource::Path(path) => path,
         _ => return Ok(None),
     };
@@ -47,7 +47,7 @@ mod tests {
     fn parses_json_file_correctly() {
         let path = Path::new("./test/resource/swagger.json");
         let mut config = create_mock_config();
-        config.openapi_source = OpenapiSource::Path(Box::from(path));
+        config.runtimes[0].openapi_source = OpenapiSource::Path(Box::from(path));
         assert_eq!(parse_openapi(&config).unwrap().unwrap().len(), 6);
     }
 
@@ -55,7 +55,7 @@ mod tests {
     fn parses_yaml_file_correctly() {
         let path = Path::new("./test/resource/swagger.yaml");
         let mut config = create_mock_config();
-        config.openapi_source = OpenapiSource::Path(Box::from(path));
+        config.runtimes[0].openapi_source = OpenapiSource::Path(Box::from(path));
         assert_eq!(parse_openapi(&config).unwrap().unwrap().len(), 6);
     }
 }

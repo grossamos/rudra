@@ -48,11 +48,11 @@ fn replace_url_in_file(config: &RudraConfig, path: &Path) -> Result<(), Error> {
         }
     }
 
-    let mut config_string = replace_url(&config_string, config.app_base_url.as_str());
+    let mut config_string = replace_url(&config_string, config.runtimes[0].app_base_url.as_str());
     if config.debug {
         config_string = replace_error_log(&config_string);
     }
-    config_string = replace_port_number(&config_string, config.port);
+    config_string = replace_port_number(&config_string, config.runtimes[0].port);
 
     let mut file = open_config_file(path, true)?;
     match file.write_all(config_string.as_bytes()) {
@@ -97,7 +97,7 @@ mod tests {
 
         let nginx_path = Path::new("./test/resource/nginx.conf");
         let mut config = create_mock_config();
-        config.app_base_url = Url::from_str("https://example.com").unwrap();
+        config.runtimes[0].app_base_url = Url::from_str("https://example.com").unwrap();
         replace_url_in_file(&config, &nginx_path).unwrap();
         let mut conf_string = String::from("");
         File::open(&nginx_path)

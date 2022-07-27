@@ -5,7 +5,8 @@ use super::print_error_and_exit;
 #[derive(Debug)]
 pub enum Error {
     InvalidApplicationURL(String),
-    MissingEnvironmentVaribles(Vec<String>),
+    MissingConfiguration,
+    ConflictingConfiguration,
     UnexpectedIOIssue(String),
     InvalidParseSyntax,
     InvalidBasePath,
@@ -19,13 +20,16 @@ pub enum Error {
     OpenapiFetchInvalidUrl,
     OpenapiMalformedOnlineComponents,
     InvalidPortNumber(String),
+    InvalidMappingSyntax,
+    MissingMapping,
 }
 
 impl Error {
     fn get_error_msg(&self) -> String {
         match self {
-            Error::InvalidApplicationURL(err_msg) => format!("Invalid Application URL provided: {}", err_msg),
-            Error::MissingEnvironmentVaribles(vars) => format!("Missing the following env variables: {:?}", vars),
+            Error::InvalidApplicationURL(err_msg) => format!("Invalid application URL provided: {}", err_msg),
+            Error::MissingConfiguration => format!("Your configuration is missing wither a mapping or an openapi location with it's respective application URL."),
+            Error::ConflictingConfiguration => format!("You can either provide a mapping or openapi location, port and application URL. Providing both is not possible at this time."),
             Error::UnexpectedIOIssue(err_msg) => format!("An issue with IO occured: {}", err_msg),
             Error::ProblemOpeningFile(path) => format!("An issue opening the openapi ({:?}) file occured.", path),
             Error::InvalidParseSyntax => format!("The syntax of the openapi file is incorrect."),
@@ -39,6 +43,8 @@ impl Error {
             Error::OpenapiFetchInvalidUrl => format!("The specified openapi url is invalid."),
             Error::OpenapiMalformedOnlineComponents => format!("Some contents of the specified openapi resource are malformed."),
             Error::InvalidPortNumber(port_str) => format!("The specified port number is invalid: \"{}\"", port_str),
+            Error::InvalidMappingSyntax => format!("The syntax of your mapping is invalid."),
+            Error::MissingMapping => format!("Please provide a mapping parameter to your configuration."),
         }
     }
 
