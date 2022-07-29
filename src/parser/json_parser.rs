@@ -1,13 +1,19 @@
+use std::sync::Arc;
+
 use json::JsonValue;
 
 use crate::{
+    config::Runtime,
     models::{EndpointConfiguration, Method},
     utils::Error,
 };
 
 use super::common::format_basepath;
 
-pub fn parse_json_doc(json_string: &str) -> Result<Vec<EndpointConfiguration>, Error> {
+pub fn parse_json_doc(
+    json_string: &str,
+    runtime: Arc<Runtime>,
+) -> Result<Vec<EndpointConfiguration>, Error> {
     let mut endpoints = vec![];
 
     let json_obj = match json::parse(json_string) {
@@ -47,8 +53,18 @@ pub fn parse_json_doc(json_string: &str) -> Result<Vec<EndpointConfiguration>, E
             };
 
             if !&method_json["security"].is_null() {
-                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), 401));
-                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), 403));
+                endpoints.push(EndpointConfiguration::new(
+                    method.clone(),
+                    path.clone(),
+                    401,
+                    runtime.clone(),
+                ));
+                endpoints.push(EndpointConfiguration::new(
+                    method.clone(),
+                    path.clone(),
+                    403,
+                    runtime.clone(),
+                ));
             }
 
             for response in responses.entries() {
@@ -56,7 +72,12 @@ pub fn parse_json_doc(json_string: &str) -> Result<Vec<EndpointConfiguration>, E
                     Ok(status_code) => status_code,
                     Err(_) => return Err(Error::InvalidParseStatusCode(response.0.to_string())),
                 };
-                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), status_code))
+                endpoints.push(EndpointConfiguration::new(
+                    method.clone(),
+                    path.clone(),
+                    status_code,
+                    runtime.clone(),
+                ))
             }
         }
     }
@@ -80,9 +101,10 @@ fn get_methods_from_path(path_json: &JsonValue) -> Result<Vec<(Method, &JsonValu
 #[cfg(test)]
 mod test {
 
+    use std::sync::Arc;
+
     use crate::{
-        models::Method,
-        parser::json_parser::parse_json_doc,
+        models::Method, parser::json_parser::parse_json_doc, utils::test::create_mock_runtime,
     };
 
     const JSON_STRING: &str = r#"
@@ -136,57 +158,92 @@ mod test {
 
     #[test]
     fn parses_correct_number_of_responses() {
-        assert_eq!(parse_json_doc(JSON_STRING).unwrap().len(), 6);
+        assert_eq!(
+            parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .len(),
+            6
+        );
     }
 
     #[test]
     fn parses_correct_status_codes() {
-        assert!(parse_json_doc(JSON_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.status_code == 200));
-        assert!(parse_json_doc(JSON_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.status_code == 400));
-        assert!(parse_json_doc(JSON_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.status_code == 418));
+        assert!(
+            parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.status_code == 200)
+        );
+        assert!(
+            parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.status_code == 400)
+        );
+        assert!(
+            parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.status_code == 418)
+        );
     }
 
     #[test]
     fn parses_correct_path() {
-        assert!(parse_json_doc(JSON_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.path == "/"));
-        assert!(parse_json_doc(JSON_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.path == "/test"));
+        assert!(
+            parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.path == "/")
+        );
+        assert!(
+            parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.path == "/test")
+        );
     }
 
     #[test]
     fn parses_correct_method() {
-        assert!(parse_json_doc(JSON_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.method == Method::GET));
-        assert!(parse_json_doc(JSON_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.method == Method::POST));
-        assert!(parse_json_doc(JSON_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.method == Method::PUT));
+        assert!(
+            parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.method == Method::GET)
+        );
+        assert!(
+            parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.method == Method::POST)
+        );
+        assert!(
+            parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.method == Method::PUT)
+        );
     }
 
     #[test]
     fn adds_401_403_for_security_headers() {
-        assert_eq!(parse_json_doc(JSON_STRING).unwrap().iter().filter(|x| x.method == Method::GET && x.status_code == 401 && x.path == "/").count(), 1);
-        assert_eq!(parse_json_doc(JSON_STRING).unwrap().iter().filter(|x| x.method == Method::GET && x.status_code == 403 && x.path == "/").count(), 1);
+        assert_eq!(
+            parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .filter(|x| x.method == Method::GET && x.status_code == 401 && x.path == "/")
+                .count(),
+            1
+        );
+        assert_eq!(
+            parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .filter(|x| x.method == Method::GET && x.status_code == 403 && x.path == "/")
+                .count(),
+            1
+        );
     }
 
     const JSON_STRING_DIFF_BASEPATH: &str = r#"
@@ -223,13 +280,17 @@ mod test {
 
     #[test]
     fn parses_correct_basepath() {
-        assert!(parse_json_doc(JSON_STRING_DIFF_BASEPATH)
-            .unwrap()
-            .iter()
-            .any(|x| x.path == "/foo"));
-        assert!(parse_json_doc(JSON_STRING_DIFF_BASEPATH)
-            .unwrap()
-            .iter()
-            .any(|x| x.path == "/foo/bar"));
+        assert!(
+            parse_json_doc(JSON_STRING_DIFF_BASEPATH, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.path == "/foo")
+        );
+        assert!(
+            parse_json_doc(JSON_STRING_DIFF_BASEPATH, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.path == "/foo/bar")
+        );
     }
 }

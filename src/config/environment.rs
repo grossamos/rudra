@@ -1,9 +1,7 @@
 use crate::utils::Error;
 use float_eq::float_eq;
-use regex::{Regex, Captures};
-use std::{collections::HashMap, env, path::Path, str::FromStr};
+use std::{collections::HashMap, env, path::Path, str::FromStr, sync::Arc};
 use url::Url;
-use lazy_static::lazy_static;
 
 use super::{OpenapiSource, RudraConfig, Runtime};
 
@@ -17,6 +15,9 @@ const ENV_VAR_MAPPING: &str = "RUDRA_MAPPING";
 
 const DEFAULT_TEST_COVERAGE: f32 = 0.7;
 const DEFAULT_PORT: u16 = 13750;
+
+const MAPPING_SEPERATOR: &str = "RUDRA_LINE_SEPERATOR";
+const MAPPING_SUBDELIMITER: &str = ";";
 
 impl RudraConfig {
     pub fn from_raw(env_vars: &HashMap<String, String>) -> Result<RudraConfig, Error> {
@@ -95,33 +96,62 @@ fn key_exists_and_is_not_empty(key: &str, env_vars: &HashMap<String, String>) ->
     }
 }
 
-fn parse_complex_mapping(mapping_str: &str) -> Result<Vec<Runtime>, Error> {
-    lazy_static! {
-        static ref MAPPING_REGEX: Regex = Regex::new(r"((.+);(.+);(.+);)").unwrap();
-    }
+fn parse_complex_mapping(mapping_str: &str) -> Result<Vec<Arc<Runtime>>, Error> {
     let mut runtimes = vec![];
-    for line in mapping_str.lines() {
-        let captures = match MAPPING_REGEX.captures(line) {
-            Some(captures) => captures,
-            None => return Err(Error::InvalidMappingSyntax),
-        };
 
-        let app_base_url_str = get_mapping_str_from_capture(&captures, 2)?;
-        let openapi_source_str = get_mapping_str_from_capture(&captures, 3)?;
-        let port_str = get_mapping_str_from_capture(&captures, 4)?;
-        runtimes.push(parse_runtime(openapi_source_str, app_base_url_str, Some(port_str))?);
+    for line in mapping_str.split(MAPPING_SEPERATOR) {
+        // ignore empty lines that might consist out of tabs or spaces
+        if line.trim() == "" {
+            continue;
+        }
+        let index = 0;
+
+        let (app_base_url_str, index) = parse_untill_mapping_subdelimiter(index, &line)?;
+        let (openapi_source_str, index) = parse_untill_mapping_subdelimiter(index, &line)?;
+        let (port_str, _) = parse_untill_mapping_subdelimiter(index, &line)?;
+
+        let app_base_url_str = replace_escaped_sequences(app_base_url_str);
+        let openapi_source_str = replace_escaped_sequences(openapi_source_str);
+        let port_str = replace_escaped_sequences(port_str);
+
+        runtimes.push(parse_runtime(&openapi_source_str, &app_base_url_str, Some(&port_str))?);
+    }
+    if runtimes.len() == 0 {
+        return Err(Error::MissingMapping)
     }
     Ok(runtimes)
 }
 
-fn get_mapping_str_from_capture<'a>(captures: &'a Captures, index: usize) -> Result<&'a str, Error> {
-    match captures.get(index) {
-        Some(content) => Ok(content.as_str()), 
-        None => Err(Error::InvalidMappingSyntax),
+fn parse_untill_mapping_subdelimiter<'a>(index: usize, base: &'a str) -> Result<(&'a str, usize), Error> {
+    let mut final_index = index;
+    let mut is_escaped = false;
+    while is_escaped || match base.get(final_index..final_index+1) {
+        Some(MAPPING_SUBDELIMITER) => false,
+        Some(_) => true,
+        None => false,
+    } {
+        if base.get(final_index..final_index+1) == Some("\\") {
+            is_escaped = true;
+        } else {
+            is_escaped = false;
+        }
+        final_index += 1;
+    }
+    final_index += 1;
+    if base.len() < final_index {
+        return Err(Error::MappingMissingSemicolon(base.to_string()))
+    }
+    match base.get(index..final_index - 1) {
+        Some(subpart) => Ok((subpart, final_index)),
+        None => Err(Error::MappingMissingSemicolon(base.to_string()))
     }
 }
 
-fn parse_runtime(openapi_source_str: &str, app_base_url_str: &str, port_str: Option<&str>) -> Result<Runtime, Error> {
+fn replace_escaped_sequences(base: &str) -> String {
+    base.replace("\\;", ";")
+}
+
+fn parse_runtime(openapi_source_str: &str, app_base_url_str: &str, port_str: Option<&str>) -> Result<Arc<Runtime>, Error> {
     let openapi_source = match Url::from_str(openapi_source_str.trim()) {
         Ok(openapi_url) => OpenapiSource::Url(openapi_url),
         Err(_) => OpenapiSource::Path(Box::from(Path::new(openapi_source_str.trim()))),
@@ -139,7 +169,7 @@ fn parse_runtime(openapi_source_str: &str, app_base_url_str: &str, port_str: Opt
         _ => DEFAULT_PORT,
     };
 
-    Ok(Runtime{openapi_source, app_base_url, port})
+    Ok(Arc::from(Runtime{openapi_source, app_base_url, port}))
 }
 
 fn get_bool_env_var(key: &str, env_vars: &HashMap<String, String>) -> bool {
@@ -188,12 +218,12 @@ mod test {
     use crate::config::{
         environment::{
             get_bool_env_var, key_exists_and_is_not_empty, translate_test_coverage,
-            DEFAULT_TEST_COVERAGE, ENV_VAR_MAPPING, ENV_VAR_PORT, parse_complex_mapping,
+            DEFAULT_TEST_COVERAGE, ENV_VAR_MAPPING, ENV_VAR_PORT, parse_complex_mapping, replace_escaped_sequences,
         },
         OpenapiSource,
     };
 
-    use super::{RudraConfig, ENV_VAR_APP_BASE_URL, ENV_VAR_DEBUG, ENV_VAR_OPENAPI_SOURCE};
+    use super::{RudraConfig, ENV_VAR_APP_BASE_URL, ENV_VAR_DEBUG, ENV_VAR_OPENAPI_SOURCE, parse_untill_mapping_subdelimiter};
 
     fn generate_config_map() -> HashMap<String, String> {
         let mut config_map = HashMap::new();
@@ -434,7 +464,7 @@ mod test {
 
     #[test]
     fn parses_basic_mapping() {
-        let runtimes = parse_complex_mapping("https://localhost:8090; docs/swagger1.yaml; 13751;\nhttps://example:8091; docs/swagger2.yaml; 13752;").unwrap();
+        let runtimes = parse_complex_mapping("https://localhost:8090; docs/swagger1.yaml; 13751;RUDRA_LINE_SEPERATORhttps://example:8091; docs/swagger2.yaml; 13752;").unwrap();
         assert_eq!(runtimes.len(), 2);
 
         assert!(runtimes.iter().any(|x| x.port == 13751));
@@ -447,18 +477,66 @@ mod test {
         assert!(runtimes.iter().any(|x| x.app_base_url.as_str() == "https://example:8091/"));
     }
 
-    // allow for as much (or as little) whitespace as you want
-    // allow for escaping ; with \;
-    // check if error messages use the wrong plural 
+    #[test]
+    fn allows_different_whitespace_ammounts() {
+        let runtimes = parse_complex_mapping("\n   https://localhost:8090; docs/swagger1.yaml     ; 13751   ;\n\n");
+        assert!(runtimes.is_ok())
+    }
+
+    #[test]
+    fn allows_escaping_of_semicolon() {
+        let runtimes = parse_complex_mapping(r"https://localhost:8090; docs/swagger\;1.yaml; 13751;").unwrap();
+        assert_eq!(runtimes[0].openapi_source, OpenapiSource::Path(Box::from(Path::new("docs/swagger;1.yaml"))));
+    }
 
     #[test]
     fn mapping_gets_recognised_in_happy_case() {
         let mut config_map = HashMap::new();
         config_map.insert(
             ENV_VAR_MAPPING.to_string(), 
-            "https://localhost:8090; docs/swagger1.yaml; 13751;\nhttps://example:8091; docs/swagger2.yaml; 13752;".to_string()
+            "https://localhost:8090; docs/swagger1.yaml; 13751;RUDRA_LINE_SEPERATORhttps://example:8091; docs/swagger2.yaml; 13752;".to_string()
         );
         let config = RudraConfig::from_raw(&config_map).unwrap();
         assert_eq!(config.runtimes.len(), 2)
+    }
+
+    #[test]
+    fn parses_till_limit() {
+        let test_str = "test test; 123";
+        let index = 0;
+        let result = parse_untill_mapping_subdelimiter(index, test_str).unwrap();
+
+        assert_eq!(result.0, "test test");
+    }
+
+    #[test]
+    fn skips_over_escaped_chars() {
+        let test_str = "test\\; \\test; 123";
+        let index = 0;
+        let result = parse_untill_mapping_subdelimiter(index, test_str).unwrap();
+
+        assert_eq!(result.0, "test\\; \\test");
+
+    }
+
+    #[test]
+    fn returns_error_if_missing_delimiter() {
+        let test_str = "test test";
+        let index = 0;
+        let result = parse_untill_mapping_subdelimiter(index, test_str);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn remove_escaped_sequences_replaces_escape_sequences() {
+        let test_str = "test\\; \\test; 123";
+        assert_eq!(replace_escaped_sequences(test_str), "test; \\test; 123");
+
+    }
+
+    #[test]
+    fn remove_escaped_sequences_ignored_unescaped() {
+        let test_str = "test; \\test; 123";
+        assert_eq!(replace_escaped_sequences(test_str), test_str);
     }
 }

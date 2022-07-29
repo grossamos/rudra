@@ -1,11 +1,13 @@
-use crate::{config::{RudraConfig, OpenapiSource}, models::EndpointConfiguration, utils::{Error, print_debug_message}};
+use std::sync::Arc;
+
+use crate::{config::{OpenapiSource, Runtime}, models::EndpointConfiguration, utils::Error};
 
 use super::{json_parser::parse_json_doc, yaml_parser::parse_yaml_doc};
 
-pub fn fetch_openapi_endpoints_ota(config: &RudraConfig) -> Result<Vec<EndpointConfiguration>, Error> {
-    let mut openapi_url = match &config.runtimes[0].openapi_source {
-        OpenapiSource::Path(_) => return Err(Error::UnknownInternalError),
+pub fn fetch_openapi_endpoints_for_runtime(runtime: Arc<Runtime>) -> Result<Vec<EndpointConfiguration>, Error> {
+    let mut openapi_url = match &runtime.openapi_source {
         OpenapiSource::Url(openapi_url) => openapi_url.clone(),
+        OpenapiSource::Path(_) => return Err(Error::UnknownInternalError("ota fetch with path".to_string())),
     };
 
     if openapi_url.host_str() == Some("localhost") {
@@ -18,21 +20,23 @@ pub fn fetch_openapi_endpoints_ota(config: &RudraConfig) -> Result<Vec<EndpointC
     let openapi_spec = match reqwest::blocking::get(openapi_url.as_str()) {
         Ok(openapi_response) => match openapi_response.text() {
             Ok(openapi_spec) => openapi_spec,
-            Err(why) => {
-                print_debug_message(config, format!("{}", why));
+            Err(_) => {
+                // TODO reenable this
+                //print_debug_message(config, format!("{}", why));
                 return Err(Error::OpenapiMalformedOnlineComponents)
             }
         },
-        Err(why) => {
-            print_debug_message(config, format!("{}", why));
+        Err(_) => {
+            // TODO reenable this
+            //print_debug_message(config, format!("{}", why));
             return Err(Error::OpenapiFetchConnectionFailure)
         } 
     };
 
     // attempt to parse as json -> on syntax err attempt yaml
-    match parse_json_doc(&openapi_spec) {
+    match parse_json_doc(&openapi_spec, runtime.clone()) {
         Ok(endpoints) => Ok(endpoints),
-        Err(Error::InvalidParseSyntax) => parse_yaml_doc(&openapi_spec),
+        Err(Error::InvalidParseSyntax) => parse_yaml_doc(&openapi_spec, runtime.clone()),
         Err(error) => return Err(error),
     }
 }

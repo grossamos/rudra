@@ -1,13 +1,14 @@
 use std::{
     fs::{File, OpenOptions},
-    path::Path, io::{Read, Write},
+    io::{Read, Write},
+    path::Path, sync::Arc,
 };
 
+use super::{RudraConfig, Runtime};
 use crate::utils::Error;
-use super::RudraConfig;
 
 pub fn configure_nginx(config: &RudraConfig) -> Result<(), Error> {
-    replace_url_in_file(config, Path::new("/etc/nginx/nginx.conf"))
+    configure_nginx_file(config, Path::new("/etc/nginx/nginx.conf"))
 }
 
 fn replace_url(base: &String, url: &str) -> String {
@@ -15,15 +16,49 @@ fn replace_url(base: &String, url: &str) -> String {
 }
 
 fn replace_error_log(base: &String) -> String {
-    base.replace("error_log  off;", "error_log  /var/log/nginx/error.log notice;")
+    base.replace(
+        "error_log  off;",
+        "error_log  /var/log/nginx/error.log notice;",
+    )
 }
 
 fn replace_port_number(base: &String, port: u16) -> String {
     base.replace("INSERT_PORT_HERE", &port.to_string())
 }
 
+fn replace_runtime_configurations(base: &String, runtimes: &Vec<Arc<Runtime>>) -> String {
+    let mut config_string = String::new();
+    for runtime in runtimes {
+        config_string.push_str(&build_runtime_config(runtime));
+    }
+    base.replace("INSERT_CONFIGURATIONS_HERE", &config_string)
+}
+
+fn build_runtime_config(runtime: &Runtime) -> String {
+    const BASE_CONFIGURATION_STRUCTURE: &str = "
+    server {
+        listen INSERT_PORT_HERE;
+        location /502 {
+            return 502 'Rudra could not connect to your service, please double check that you specified the correct uri.';
+        }
+        location / {
+            proxy_pass INSERT_URL_HERE;
+        }
+    }
+    ";
+    let config = &String::from(BASE_CONFIGURATION_STRUCTURE);
+    let config = replace_port_number(&config, runtime.port);
+    let config = replace_url(&config, runtime.app_base_url.as_str());
+    config
+}
+
 fn open_config_file(path: &Path, for_writing: bool) -> Result<File, Error> {
-    match OpenOptions::new().write(for_writing).read(true).truncate(for_writing).open(path) {
+    match OpenOptions::new()
+        .write(for_writing)
+        .read(true)
+        .truncate(for_writing)
+        .open(path)
+    {
         Ok(file) => Ok(file),
         Err(why) => {
             return Err(Error::UnexpectedIOIssue(format!(
@@ -34,7 +69,7 @@ fn open_config_file(path: &Path, for_writing: bool) -> Result<File, Error> {
     }
 }
 
-fn replace_url_in_file(config: &RudraConfig, path: &Path) -> Result<(), Error> {
+fn configure_nginx_file(config: &RudraConfig, path: &Path) -> Result<(), Error> {
     let mut file = open_config_file(path, false)?;
 
     let mut config_string = String::new();
@@ -48,11 +83,10 @@ fn replace_url_in_file(config: &RudraConfig, path: &Path) -> Result<(), Error> {
         }
     }
 
-    let mut config_string = replace_url(&config_string, config.runtimes[0].app_base_url.as_str());
     if config.debug {
         config_string = replace_error_log(&config_string);
     }
-    config_string = replace_port_number(&config_string, config.runtimes[0].port);
+    config_string = replace_runtime_configurations(&config_string, &config.runtimes);
 
     let mut file = open_config_file(path, true)?;
     match file.write_all(config_string.as_bytes()) {
@@ -73,12 +107,22 @@ mod tests {
     use std::{
         fs::File,
         io::{Read, Write},
-        path::Path, str::FromStr,
+        path::Path,
+        str::FromStr, sync::Arc,
     };
 
     use url::Url;
 
-    use crate::{config::nginx::{replace_url, replace_url_in_file, replace_error_log, replace_port_number}, utils::test::create_mock_config};
+    use crate::{
+        config::{
+            nginx::{
+                configure_nginx_file, replace_error_log, replace_port_number,
+                replace_runtime_configurations, replace_url,
+            },
+            OpenapiSource, Runtime,
+        },
+        utils::test::create_mock_config,
+    };
 
     use super::open_config_file;
 
@@ -96,26 +140,45 @@ mod tests {
         write_default_config();
 
         let nginx_path = Path::new("./test/resource/nginx.conf");
-        let mut config = create_mock_config();
-        config.runtimes[0].app_base_url = Url::from_str("https://example.com").unwrap();
-        replace_url_in_file(&config, &nginx_path).unwrap();
+        let config = create_mock_config();
+        configure_nginx_file(&config, &nginx_path).unwrap();
         let mut conf_string = String::from("");
         File::open(&nginx_path)
             .unwrap()
             .read_to_string(&mut conf_string)
             .unwrap();
-        assert_eq!(
-            conf_string,
-            "...some other conf\nproxy_pass https://example.com/\n13750\n...some more conf\n"
-        );
+
+        assert!(conf_string.contains("http://example.com"));
+        assert!(conf_string.contains("13750"));
 
         write_default_config();
+    }
+
+    #[test]
+    fn generates_multiple_configurations() {
+        let mut config = create_mock_config();
+        config.runtimes.push(Arc::from(Runtime {
+            openapi_source: OpenapiSource::Url(Url::from_str("http://example.com").unwrap()),
+            app_base_url: Url::from_str("http://example.com").unwrap(),
+            port: 123,
+        }));
+        config.runtimes.push(Arc::from(Runtime {
+            openapi_source: OpenapiSource::Url(Url::from_str("http://example.com").unwrap()),
+            app_base_url: Url::from_str("http://example.com").unwrap(),
+            port: 456,
+        }));
+        let config_string = replace_runtime_configurations(
+            &"INSERT_CONFIGURATIONS_HERE".to_string(),
+            &config.runtimes,
+        );
+        assert!(config_string.contains("123"));
+        assert!(config_string.contains("456"));
     }
 
     fn write_default_config() {
         let mut file = open_config_file(Path::new("./test/resource/nginx.conf"), true).unwrap();
         file.write_all(
-            "...some other conf\nproxy_pass INSERT_URL_HERE\nINSERT_PORT_HERE\n...some more conf\n".as_bytes(),
+            "...some other conf \nINSERT_CONFIGURATIONS_HERE\n...some more conf\n".as_bytes(),
         )
         .unwrap();
         file.flush().unwrap();

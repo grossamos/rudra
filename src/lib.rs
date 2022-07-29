@@ -3,8 +3,8 @@ use std::process::{Command, Stdio};
 use config::{RudraConfig, configure_nginx};
 use evaluator::Evaluation;
 use models::EndpointConfiguration;
-use parser::{parse_openapi, fetch_openapi_endpoints_ota};
-use utils::{print_debug_message, Error};
+use parser::get_openapi_endpoint_configs;
+use utils::print_debug_message;
 
 use crate::{parser::parse_nginx_access_log, utils::print_error_and_exit};
 
@@ -43,51 +43,42 @@ pub fn run_nginx(config: &RudraConfig) {
     }
 }
 
-pub fn initialize_rudra() -> (RudraConfig, Option<Vec<EndpointConfiguration>>) {
+pub fn initialize_rudra() -> (RudraConfig, Vec<EndpointConfiguration>) {
     let config = match RudraConfig::from_env() {
         Ok(config) => config,
         Err(error) => error.display_error_and_exit(),
     };
 
-    // attemt to get endpoints from file then dyncamically
-    let openapi_endpoints = match parse_openapi(&config) {
-        Ok(Some(openapi_endpoints)) => Some(openapi_endpoints),
-        Ok(None) => match fetch_openapi_endpoints_ota(&config) {
-            Ok(openapi_endpoints) => Some(openapi_endpoints),
-            Err(Error::OpenapiFetchConnectionFailure) => None,
-            Err(error) => error.display_error_and_exit(),
-        },
-        Err(error) => error.display_error_and_exit(),
-    };
+    let mut openapi_endpoints = vec![];
+    for runtime in &config.runtimes {
+        let mut endpoints = match get_openapi_endpoint_configs(runtime.clone()) {
+            Ok(endpoints) => endpoints,
+            Err(err) => err.display_error_and_exit(),
+        };
+        openapi_endpoints.append(&mut endpoints);
+    
+    }
 
     (config, openapi_endpoints)
 }
 
-pub fn run_eval(config: &RudraConfig, openapi_endpoints: Option<Vec<EndpointConfiguration>>) -> Evaluation {
+pub fn run_eval(config: &RudraConfig, openapi_endpoints: Vec<EndpointConfiguration>) -> Evaluation {
     print_debug_message(config, "Evaluating endpoint coverage");
 
-    let nginx_endpoints = match parse_nginx_access_log(config) {
+    let nginx_endpoints = match parse_nginx_access_log(&config.runtimes) {
         Ok(nginx_endpoints) => nginx_endpoints,
         Err(_) => print_error_and_exit("An unexpected error occured while parsing the nginx logs"),
     };
 
-    // if no endpoint configuarations are found until now: retry dyncamic fetch
-    let openapi_endpoints = match openapi_endpoints {
-        Some(openapi_endpoints) => openapi_endpoints,
-        None => match fetch_openapi_endpoints_ota(&config) {
-            Ok(openapi_endpoints) => openapi_endpoints,
-            Err(error) => error.display_error_and_exit(),
-        },
-    };
-
-    Evaluation::new(&openapi_endpoints, &nginx_endpoints)
+    Evaluation::new(openapi_endpoints, nginx_endpoints)
 }
 
 pub fn publish_results(config: &RudraConfig, eval: &Evaluation) {
+    if eval.has_gateway_issues() {
+        println!("Warning: A large number of 502 errors occured. Is your service running?")
+    }
     let coverage = eval.calc_test_coverage();
-    println!("-------------------");
-    println!("       Results     ");
-    println!("-------------------");
+    println!("Results:");
     eval.print_results();
     println!("Test coverage: {}%", coverage * 100.0);
     if coverage < config.test_coverage {

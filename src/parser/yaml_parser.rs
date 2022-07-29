@@ -1,13 +1,19 @@
+use std::sync::Arc;
+
 use linked_hash_map::LinkedHashMap;
 use yaml_rust::{Yaml, YamlLoader};
 
 use crate::{
+    config::Runtime,
     models::{EndpointConfiguration, Method},
     parser::common::format_basepath,
     utils::Error,
 };
 
-pub fn parse_yaml_doc(yaml_string: &str) -> Result<Vec<EndpointConfiguration>, Error> {
+pub fn parse_yaml_doc(
+    yaml_string: &str,
+    runtime: Arc<Runtime>,
+) -> Result<Vec<EndpointConfiguration>, Error> {
     let spec = match YamlLoader::load_from_str(yaml_string) {
         Ok(spec) => spec,
         Err(_) => return Err(Error::InvalidParseSyntax),
@@ -17,7 +23,7 @@ pub fn parse_yaml_doc(yaml_string: &str) -> Result<Vec<EndpointConfiguration>, E
 
     let spec = match spec.as_hash() {
         Some(spec) => spec,
-        None => return Err(Error::UnknownInternalError),
+        None => return Err(Error::UnknownInternalError("yaml spec can't be serialized".to_string())),
     };
 
     let basepath = match spec.get(&Yaml::from_str("basePath")) {
@@ -58,8 +64,18 @@ pub fn parse_yaml_doc(yaml_string: &str) -> Result<Vec<EndpointConfiguration>, E
             let method_infos = retrive_value_as_hash_map(methods, method_key)?;
             let statuses = retrive_value_as_hash_map(method_infos, &Yaml::from_str("responses"))?;
             if method_infos.get(&Yaml::from_str("security")).is_some() {
-                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), 401));
-                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), 403));
+                endpoints.push(EndpointConfiguration::new(
+                    method.clone(),
+                    path.clone(),
+                    401,
+                    runtime.clone(),
+                ));
+                endpoints.push(EndpointConfiguration::new(
+                    method.clone(),
+                    path.clone(),
+                    403,
+                    runtime.clone(),
+                ));
             }
 
             for status_key in statuses.keys() {
@@ -71,7 +87,12 @@ pub fn parse_yaml_doc(yaml_string: &str) -> Result<Vec<EndpointConfiguration>, E
                         ))
                     }
                 };
-                endpoints.push(EndpointConfiguration::new(method.clone(), path.clone(), status_code));
+                endpoints.push(EndpointConfiguration::new(
+                    method.clone(),
+                    path.clone(),
+                    status_code,
+                    runtime.clone(),
+                ));
             }
         }
     }
@@ -88,13 +109,17 @@ fn retrive_value_as_hash_map<'a>(
             Some(child) => Ok(child),
             None => Err(Error::InvalidParseSyntax),
         },
-        None => Err(Error::UnknownInternalError),
+        None => Err(Error::UnknownInternalError("yaml spec parent should exist".to_string())),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{models::Method, parser::yaml_parser::parse_yaml_doc};
+    use std::sync::Arc;
+
+    use crate::{
+        models::Method, parser::yaml_parser::parse_yaml_doc, utils::test::create_mock_runtime,
+    };
 
     const YAML_STRING: &str = "
 basePath: /
@@ -129,48 +154,62 @@ paths:
 
     #[test]
     fn finds_all_paths() {
-        assert!(parse_yaml_doc(YAML_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.path == "/"));
-        assert!(parse_yaml_doc(YAML_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.path == "/test"));
+        assert!(
+            parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.path == "/")
+        );
+        assert!(
+            parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.path == "/test")
+        );
     }
 
     #[test]
     fn finds_all_methods() {
-        assert!(parse_yaml_doc(YAML_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.method == Method::GET));
-        assert!(parse_yaml_doc(YAML_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.method == Method::PUT));
+        assert!(
+            parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.method == Method::GET)
+        );
+        assert!(
+            parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.method == Method::PUT)
+        );
     }
 
     #[test]
     fn finds_all_statuses() {
-        assert!(parse_yaml_doc(YAML_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.status_code == 200));
-        assert!(parse_yaml_doc(YAML_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.status_code == 400));
-        assert!(parse_yaml_doc(YAML_STRING)
-            .unwrap()
-            .iter()
-            .any(|x| x.status_code == 418));
+        assert!(
+            parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.status_code == 200)
+        );
+        assert!(
+            parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.status_code == 400)
+        );
+        assert!(
+            parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
+                .unwrap()
+                .iter()
+                .any(|x| x.status_code == 418)
+        );
     }
 
     #[test]
     fn adds_401_403_for_security_headers() {
         assert_eq!(
-            parse_yaml_doc(YAML_STRING)
+            parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
                 .filter(|x| x.method == Method::GET && x.status_code == 401 && x.path == "/")
@@ -178,7 +217,7 @@ paths:
             1
         );
         assert_eq!(
-            parse_yaml_doc(YAML_STRING)
+            parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
                 .filter(|x| x.method == Method::GET && x.status_code == 403 && x.path == "/")

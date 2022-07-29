@@ -1,14 +1,13 @@
 use std::{path::Path, fs::File, io::Read};
 
-use crate::{config::RudraConfig, models::EndpointConfiguration};
+use crate::models::EndpointConfiguration;
 
-use super::print_debug_message;
-
-pub fn read_file_to_string_or_err<E>(config: &RudraConfig ,path: &Path, err: E) -> Result<String, E> {
+pub fn read_file_to_string_or_err<E>(path: &Path, err: E) -> Result<String, E> {
     let mut file = match File::open(&path) {
         Ok(file) => file,
-        Err(why) => {
-            print_debug_message(config, why.to_string());
+        Err(_why) => {
+            // TODO uncomment after singleton refactor
+            //print_debug_message(config, why.to_string());
             return Err(err);
         } ,
     };

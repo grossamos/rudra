@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 use url::Url;
 
@@ -12,18 +12,19 @@ pub struct RudraConfig {
     pub debug: bool,
     pub account_for_security: bool,
     pub test_coverage: f32,
-    pub runtimes: Vec<Runtime>,
+    pub runtimes: Vec<Arc<Runtime>>,
 }
 
 #[derive(Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Runtime {
     pub openapi_source: OpenapiSource,
     pub app_base_url: Url,
     pub port: u16,
 }
 
-#[derive(PartialEq)]
 #[derive(Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum OpenapiSource {
     Path(Box<Path>),
     Url(Url),
