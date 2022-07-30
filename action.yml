@@ -54,7 +54,7 @@ runs:
                 RUDRA_OPENAPI_SOURCE="${{inputs.openapi-source}}"
             fi
             if [[ "${{inputs.services}}" = "" ]]; then
-                RUDRA_PORT="-p ${{inputs.port}}:{{inputs.port}}"
+                RUDRA_PORT="-p ${{inputs.port}}:${{inputs.port}}"
                 RUDRA_MAPPING=""
             else
                 RUDRA_PORT=$(echo "${{inputs.services}}" | sed -r 's/([^;]|\\;)*;([^;]|\\;)*; ([0-9]+)\;/-p \3:\3/g' | sed 's/localhost/172.17.0.1/g' | tr '\n' ' ')
