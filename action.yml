@@ -51,7 +51,8 @@ runs:
             else
                 RUDRA_PORT=$(echo "${{inputs.services}}" | sed -r 's/([^;]|\\;)*;([^;]|\\;)*; ([0-9]+)\;/-p \3:\3/g' | sed 's/localhost/172.17.0.1/g' | tr '\n' ' ')
                 RUDRA_MAPPING="${{inputs.services}}"
-                RUDRA_MAPPING="${RUDRA_MAPPING//$'\n'/'RUDRA_LINE_SEPERATOR'}"
+                RUDRA_MAPPING="${RUDRA_MAPPING//$'\n'/RUDRA_LINE_SEPERATOR}"
+                RUDRA_MAPPING="${RUDRA_MAPPING//localhost/172.17.0.1'}"
             fi
             docker run --env RUDRA_DEBUG="${{inputs.debug}}" --env RUDRA_APP_BASE_URL="${RUDRA_APP_BASE_URL/localhost/172.17.0.1}" --env RUDRA_OPENAPI_SOURCE="${{inputs.openapi-source}}" --env RUDRA_ACCOUNT_FOR_SECURITY="${{inputs.account-for-security}}" --env RUDRA_TEST_COVERAGE="${{inputs.test-coverage}}" --env RUDRA_PORT="${{inputs.port}}" --volume $PWD:/repo $RUDRA_PORT --env RUDRA_MAPPING="$RUDRA_MAPPING" --network rudra --name rudra -d grossamos/rudra:v0.1.1
             sleep 1
