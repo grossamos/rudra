@@ -1,6 +1,6 @@
 use crate::utils::Error;
 use float_eq::float_eq;
-use std::{collections::HashMap, env, path::Path, str::FromStr, sync::Arc};
+use std::{collections::{HashMap, HashSet}, env, path::Path, str::FromStr, sync::Arc};
 use url::Url;
 
 use super::{OpenapiSource, RudraConfig, Runtime};
@@ -119,6 +119,10 @@ fn parse_complex_mapping(mapping_str: &str) -> Result<Vec<Arc<Runtime>>, Error> 
     if runtimes.len() == 0 {
         return Err(Error::MissingMapping)
     }
+    if !check_runtime_compatability(&runtimes) {
+        println!("{:?}", runtimes);
+        return Err(Error::MappingDuplicatePorts);
+    }
     Ok(runtimes)
 }
 
@@ -145,6 +149,16 @@ fn parse_untill_mapping_subdelimiter<'a>(index: usize, base: &'a str) -> Result<
         Some(subpart) => Ok((subpart, final_index)),
         None => Err(Error::MappingMissingSemicolon(base.to_string()))
     }
+}
+
+fn check_runtime_compatability(runtimes: &Vec<Arc<Runtime>>) -> bool {
+    let mut ports = HashSet::new();
+    for runtime in runtimes {
+        if !ports.insert(runtime.port) {
+            return false;
+        }
+    }
+    true
 }
 
 fn replace_escaped_sequences(base: &str) -> String {
@@ -501,6 +515,16 @@ mod test {
     }
 
     #[test]
+    fn duplicate_ports_lead_to_error_in_mapping() {
+        let mut config_map = HashMap::new();
+        config_map.insert(
+            ENV_VAR_MAPPING.to_string(), 
+            "https://localhost:8090; docs/swagger1.yaml; 13751;RUDRA_LINE_SEPERATORhttps://example:8091; docs/swagger2.yaml; 13751;".to_string()
+        );
+        assert!(RudraConfig::from_raw(&config_map).is_err());
+    }
+
+    #[test]
     fn parses_till_limit() {
         let test_str = "test test; 123";
         let index = 0;
@@ -539,4 +563,5 @@ mod test {
         let test_str = "test; \\test; 123";
         assert_eq!(replace_escaped_sequences(test_str), test_str);
     }
+
 }

@@ -1,6 +1,6 @@
 use std::process::{Command, Stdio};
 
-use config::{RudraConfig, configure_nginx};
+use config::{configure_nginx, RudraConfig};
 use evaluator::Evaluation;
 use models::EndpointConfiguration;
 use parser::get_openapi_endpoint_configs;
@@ -30,7 +30,6 @@ pub fn run_nginx(config: &RudraConfig) {
         nginx_cmd.stdout(Stdio::null());
     }
 
-
     match nginx_cmd.stdout(Stdio::null()).status() {
         Ok(status) => {
             if !status.success() {
@@ -56,7 +55,6 @@ pub fn initialize_rudra() -> (RudraConfig, Vec<EndpointConfiguration>) {
             Err(err) => err.display_error_and_exit(),
         };
         openapi_endpoints.append(&mut endpoints);
-    
     }
 
     (config, openapi_endpoints)
@@ -79,9 +77,9 @@ pub fn publish_results(config: &RudraConfig, eval: &Evaluation) {
     }
     let coverage = eval.calc_test_coverage();
     println!("Results:");
-    eval.print_results();
+    eval.print_results(config);
     println!("Test coverage: {}%", coverage * 100.0);
     if coverage < config.test_coverage {
         print_error_and_exit("Coverage not sufficient");
-    } 
+    }
 }

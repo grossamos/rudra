@@ -19,7 +19,7 @@ pub fn read_file_to_string_or_err<E>(path: &Path, err: E) -> Result<String, E> {
     }
 }
 
-pub fn print_endpoints<'a, T: Iterator<Item = &'a EndpointConfiguration>>(endpoints: &mut T) {
+pub fn print_endpoints<'a, T: Iterator<Item = &'a EndpointConfiguration>>(endpoints: T) {
     for endpoint in endpoints {
         println!("- \"{}\", {:?}, {}", endpoint.path, endpoint.method, endpoint.status_code);
     }

@@ -1,4 +1,10 @@
-use crate::{models::EndpointConfiguration, utils::print_endpoints};
+use lazy_static::__Deref;
+
+use crate::{
+    config::{OpenapiSource, RudraConfig},
+    models::EndpointConfiguration,
+    utils::{print_endpoints, sort_by_runtime},
+};
 
 #[derive(Debug)]
 pub struct Evaluation {
@@ -25,18 +31,39 @@ impl Evaluation {
         }
     }
 
-    pub fn print_results(&self) {
-        if self.missed_endpoint_configurations.len() > 0 {
-            println!("Missed endpoint configurations:");
-            print_endpoints(&mut self.missed_endpoint_configurations.iter());
-        }
-        if self.missed_openapi_configurations.len() > 0 {
-            println!("The following configurations were logged during the tests, but do not exist in the openapi spec:");
-            print_endpoints(&mut self.missed_openapi_configurations.iter());
-        }
-        if self.missed_endpoint_configurations.len() + self.missed_openapi_configurations.len() > 0
-        {
-            println!("");
+    pub fn print_results(&self, config: &RudraConfig) {
+        let sorted_missed_endpoint_configs = sort_by_runtime(&self.missed_endpoint_configurations);
+        let sorted_missed_openapi_configs = sort_by_runtime(&self.missed_openapi_configurations);
+        for runtime in &config.runtimes {
+            let mut nothing_missed = true;
+            if config.runtimes.len() > 1 {
+                println!(
+                    "From OpenAPI spec in \"{}\":",
+                    match &runtime.openapi_source {
+                        OpenapiSource::Url(url) => url.as_str(),
+                        OpenapiSource::Path(path) => path.to_str().unwrap_or("<path unknown>"),
+                    }
+                );
+            }
+            match sorted_missed_endpoint_configs.get(runtime) {
+                Some(missed) => {
+                    nothing_missed = false;
+                    println!("Missed endpoint configurations:");
+                    print_endpoints(missed.iter().map(|x| x.deref()));
+                }
+                None => (),
+            }
+            match sorted_missed_openapi_configs.get(runtime) {
+                Some(missed) => {
+                    nothing_missed = false;
+                    println!("The following configurations were logged during the tests, but do not exist in the openapi spec:");
+                    print_endpoints(missed.iter().map(|x| x.deref()));
+                }
+                None => (),
+            }
+            if nothing_missed {
+                println!(" - Nothing missed");
+            }
         }
     }
 
@@ -364,10 +391,6 @@ mod test {
         assert_eq!(required_set.len(), 0);
         assert_eq!(actual_set.len(), 4);
     }
-
-    // which endpoints are missed
-    // what percentage of endpoints are hit
-    // which configurations are not covered by openapi
 
     #[test]
     fn empty_configurations_lead_to_full_test_coverage() {

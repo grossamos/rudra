@@ -7,6 +7,7 @@ use super::misc::Method;
 #[derive(Debug)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Clone)]
+#[derive(Hash)]
 pub struct EndpointConfiguration {
     pub method: Method,
     pub path: String,

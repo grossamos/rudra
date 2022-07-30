@@ -24,6 +24,7 @@ pub enum Error {
     MissingMapping,
     MappingMissingSemicolon(String),
     OpenapiPathIsAbsolute(Box<Path>),
+    MappingDuplicatePorts,
 }
 
 impl Error {
@@ -49,6 +50,7 @@ impl Error {
             Error::MissingMapping => format!("Please provide a mapping to your configuration, the current mapping is either empty or wasn't provided."),
             Error::MappingMissingSemicolon(mapping) => format!("The follwing mapping is missing a semicolon or is incomplete, please follow the 'service url; openapi source; port;' syntax: {}", mapping),
             Error::OpenapiPathIsAbsolute(path) => format!("The following path is absolute, please only specify relative paths: {}", path.to_str().or(Some("<empty>")).unwrap()),
+            Error::MappingDuplicatePorts => format!("The mapping contains duplicate ports, every port can only be used once."),
         }
     }
 

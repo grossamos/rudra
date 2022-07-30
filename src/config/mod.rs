@@ -16,6 +16,7 @@ pub struct RudraConfig {
 }
 
 #[derive(Debug)]
+#[derive(Hash)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Runtime {
     pub openapi_source: OpenapiSource,
@@ -23,6 +24,7 @@ pub struct Runtime {
     pub port: u16,
 }
 
+#[derive(Hash)]
 #[derive(Debug)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum OpenapiSource {
