@@ -28,6 +28,9 @@ inputs:
     description: 'Port for rudra to listen on'
     default: 13750
     required: false
+  services:
+    description: 'A mapping for multiple services with different specs and basepaths'
+    required: false
 runs:
   using: "composite"
   steps:
@@ -50,7 +53,14 @@ runs:
                 SPEC_VOLUME=""
                 RUDRA_OPENAPI_SOURCE="${{inputs.openapi-source}}"
             fi
-            docker run --env RUDRA_DEBUG="${{inputs.debug}}" --env RUDRA_APP_BASE_URL="${RUDRA_APP_BASE_URL/localhost/172.17.0.1}" --env RUDRA_OPENAPI_SOURCE="$RUDRA_OPENAPI_SOURCE" --env RUDRA_ACCOUNT_FOR_SECURITY="${{inputs.account-for-security}}" --env RUDRA_TEST_COVERAGE="${{inputs.test-coverage}}" --env RUDRA_PORT="${{inputs.port}}" $SPEC_VOLUME -p ${{inputs.port}}:${{inputs.port}} --network rudra --name rudra -d grossamos/rudra:v0.0.6
+            if [[ "${{inputs.services}}" = "" ]]; then
+                RUDRA_PORT="-p ${{inputs.port}}:{{inputs.port}}"
+                RUDRA_MAPPING=""
+            else
+                RUDRA_PORT=$(echo "${{inputs.services}}" | sed -r 's/([^;]|\\;)*;([^;]|\\;)*; ([0-9]+)\;/-p \3:\3/g' | sed 's/localhost/172.17.0.1/g' | tr '\n' ' ')
+                RUDRA_MAPPING=$(echo "${{inputs.services}}" | tr '\n' 'RUDRA_LINE_SEPERATOR')
+            fi
+            docker run --env RUDRA_DEBUG="${{inputs.debug}}" --env RUDRA_APP_BASE_URL="${RUDRA_APP_BASE_URL/localhost/172.17.0.1}" --env RUDRA_OPENAPI_SOURCE="$RUDRA_OPENAPI_SOURCE" --env RUDRA_ACCOUNT_FOR_SECURITY="${{inputs.account-for-security}}" --env RUDRA_TEST_COVERAGE="${{inputs.test-coverage}}" --env RUDRA_PORT="${{inputs.port}}" $SPEC_VOLUME $RUDRA_PORT --env RUDRA_MAPPING="$RUDRA_MAPPING" --network rudra --name rudra -d grossamos/rudra:v0.0.6
             sleep 1
             docker logs rudra
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
