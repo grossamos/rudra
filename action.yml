@@ -42,7 +42,11 @@ runs:
             done 
             RUDRA_APP_BASE_URL=${{inputs.instance-url}}
             if [[ "${{inputs.services}}" = "" ]]; then
-                RUDRA_PORT="-p ${{inputs.port}}:${{inputs.port}}"
+                if [[ "${{inputs.port}}" = "" ]]; then
+                    RUDRA_PORT="-p 13750:13750"
+                else
+                    RUDRA_PORT="-p ${{inputs.port}}:${{inputs.port}}"
+                fi
                 RUDRA_MAPPING=""
             else
                 RUDRA_PORT=$(echo "${{inputs.services}}" | sed -r 's/([^;]|\\;)*;([^;]|\\;)*; ([0-9]+)\;/-p \3:\3/g' | sed 's/localhost/172.17.0.1/g' | tr '\n' ' ')
