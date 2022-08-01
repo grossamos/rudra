@@ -8,7 +8,7 @@ use std::{
 use crate::{
     config::Runtime,
     models::{EndpointConfiguration, Method},
-    utils::Error,
+    utils::{Error, print_debug_message},
 };
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -26,9 +26,8 @@ fn parse_access_log(
     let mut endpoints = Vec::new();
     let reader = match File::open(path) {
         Ok(file) => BufReader::new(file),
-        Err(_why) => {
-            // TODO enable this message
-            //print_debug_message(config, why.to_string());
+        Err(why) => {
+            print_debug_message(why.to_string());
             return Err(Error::ProblemOpeningFile(Box::from(path)));
         }
     };
@@ -36,9 +35,8 @@ fn parse_access_log(
     for line in reader.lines() {
         let line_str = match line {
             Ok(line_str) => line_str,
-            Err(_why) => {
-                // TODO enable this message
-                //print_debug_message(config, why.to_string());
+            Err(why) => {
+                print_debug_message(why.to_string());
                 return Err(Error::ProblemOpeningFile(Box::from(path)));
             }
         };

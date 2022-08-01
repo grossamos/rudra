@@ -2,8 +2,8 @@ use std::{fmt::Display, process};
 
 use crate::config::RudraConfig;
 
-pub fn print_debug_message<T: Display>(config: &RudraConfig, debug_message: T) {
-    if config.debug {
+pub fn print_debug_message<T: Display>(debug_message: T) {
+    if RudraConfig::global_is_debug() {
         println!("{}", debug_message);
     }
 }

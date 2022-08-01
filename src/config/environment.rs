@@ -1,7 +1,8 @@
 use crate::utils::Error;
 use float_eq::float_eq;
-use std::{collections::{HashMap, HashSet}, env, path::Path, str::FromStr, sync::Arc};
+use std::{collections::{HashMap, HashSet}, env, path::Path, str::FromStr, sync::{Arc, RwLock}};
 use url::Url;
+use lazy_static::lazy_static;
 
 use super::{OpenapiSource, RudraConfig, Runtime};
 
@@ -18,6 +19,10 @@ const DEFAULT_PORT: u16 = 13750;
 
 const MAPPING_SEPERATOR: &str = "RUDRA_LINE_SEPERATOR";
 const MAPPING_SUBDELIMITER: &str = ";";
+
+lazy_static! {
+    static ref IS_DEBUG: RwLock<bool> = RwLock::new(true);
+}
 
 impl RudraConfig {
     pub fn from_raw(env_vars: &HashMap<String, String>) -> Result<RudraConfig, Error> {
@@ -72,6 +77,13 @@ impl RudraConfig {
             parse_complex_mapping(mapping_str)?
         };
 
+        // adjust global debug setting
+        if let Ok(mut is_debug) = IS_DEBUG.write() {
+            *is_debug = debug
+        } else {
+            return Err(Error::UnknownInternalError("debug double write".to_string()))
+        }
+
         Ok(RudraConfig {
             debug,
             account_for_security,
@@ -86,6 +98,11 @@ impl RudraConfig {
             env_vars.insert(var.0, var.1);
         }
         RudraConfig::from_raw(&env_vars)
+    }
+
+    pub fn global_is_debug() -> bool {
+        // unwrap is okay, since there should only be one write operaion
+        *IS_DEBUG.read().unwrap()
     }
 }
 

@@ -38,11 +38,12 @@ impl Evaluation {
             let mut nothing_missed = true;
             if config.runtimes.len() > 1 {
                 println!(
-                    "From OpenAPI spec in \"{}\":",
+                    "From OpenAPI spec in \"{}\" pointing to endpoint at \"{}\":",
                     match &runtime.openapi_source {
                         OpenapiSource::Url(url) => url.as_str(),
                         OpenapiSource::Path(path) => path.to_str().unwrap_or("<path unknown>"),
-                    }
+                    },
+                    runtime.app_base_url.as_str(),
                 );
             }
             match sorted_missed_endpoint_configs.get(runtime) {

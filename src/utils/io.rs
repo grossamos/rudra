@@ -2,12 +2,13 @@ use std::{path::Path, fs::File, io::Read};
 
 use crate::models::EndpointConfiguration;
 
+use super::print_debug_message;
+
 pub fn read_file_to_string_or_err<E>(path: &Path, err: E) -> Result<String, E> {
     let mut file = match File::open(&path) {
         Ok(file) => file,
-        Err(_why) => {
-            // TODO uncomment after singleton refactor
-            //print_debug_message(config, why.to_string());
+        Err(why) => {
+            print_debug_message(why.to_string());
             return Err(err);
         } ,
     };

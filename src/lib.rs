@@ -22,7 +22,7 @@ pub fn run_nginx(config: &RudraConfig) {
     }
 
     // spawn nginx as a subprocess
-    print_debug_message(config, "Starting nginx");
+    print_debug_message("Starting nginx");
     let mut nginx_cmd = Command::new("nginx");
     nginx_cmd.arg("-g").arg("daemon off;");
 
@@ -61,7 +61,7 @@ pub fn initialize_rudra() -> (RudraConfig, Vec<EndpointConfiguration>) {
 }
 
 pub fn run_eval(config: &RudraConfig, openapi_endpoints: Vec<EndpointConfiguration>) -> Evaluation {
-    print_debug_message(config, "Evaluating endpoint coverage");
+    print_debug_message("Evaluating endpoint coverage");
 
     let nginx_endpoints = match parse_nginx_access_log(&config.runtimes) {
         Ok(nginx_endpoints) => nginx_endpoints,
