@@ -24,6 +24,9 @@ impl Evaluation {
         let missed_endpoint_configurations = openapi_endpoints;
         let missed_openapi_configurations = logged_endpoints;
 
+        // filter generated endpoints out
+        let missed_openapi_configurations = missed_openapi_configurations.into_iter().filter(|x| !x.is_generated).collect();
+
         Evaluation {
             missed_endpoint_configurations,
             missed_openapi_configurations,
@@ -166,6 +169,7 @@ mod test {
             String::from("/a"),
             200,
             Arc::from(create_mock_runtime()),
+            false,
         )
     }
 
@@ -175,6 +179,7 @@ mod test {
             String::from("/b"),
             200,
             Arc::from(create_mock_runtime()),
+            false,
         )
     }
 
@@ -184,6 +189,7 @@ mod test {
             String::from("/c"),
             200,
             Arc::from(create_mock_runtime()),
+            false,
         )
     }
 
@@ -193,6 +199,7 @@ mod test {
             String::from("/d"),
             201,
             Arc::from(create_mock_runtime()),
+            false,
         )
     }
 
@@ -448,12 +455,14 @@ mod test {
                 path: "/a".to_string(),
                 runtime: Arc::from(create_mock_runtime()),
                 status_code: 502,
+                is_generated: false,
             },
             EndpointConfiguration {
                 method: Method::GET,
                 path: "/b".to_string(),
                 runtime: Arc::from(create_mock_runtime()),
                 status_code: 502,
+                is_generated: false,
             },
         ];
         let eval = Evaluation::new(openapi_endpoints, logged_endpoints);
@@ -475,6 +484,7 @@ mod test {
                 path: "/b".to_string(),
                 runtime: Arc::from(create_mock_runtime()),
                 status_code: 502,
+                is_generated: false,
             },
         ];
 
@@ -488,5 +498,19 @@ mod test {
         let logged_endpoints = vec![];
         let eval = Evaluation::new(openapi_endpoints, logged_endpoints);
         assert!(!eval.has_gateway_issues());
+    }
+
+    #[test]
+    fn automatically_generated_endpoints_are_ignored_for_missed_openapi() {
+        let openapi_endpoints = vec![];
+        let logged_endpoints = vec![EndpointConfiguration::new(
+            Method::GET,
+            "/".to_string(),
+            200,
+            Arc::new(create_mock_runtime()),
+            true,
+        )];
+        let eval = Evaluation::new(openapi_endpoints, logged_endpoints);
+        assert_eq!(eval.missed_openapi_configurations.len(), 0)
     }
 }

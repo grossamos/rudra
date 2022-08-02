@@ -69,12 +69,14 @@ pub fn parse_yaml_doc(
                     path.clone(),
                     401,
                     runtime.clone(),
+                    true
                 ));
                 endpoints.push(EndpointConfiguration::new(
                     method.clone(),
                     path.clone(),
                     403,
                     runtime.clone(),
+                    true
                 ));
             }
 
@@ -92,6 +94,7 @@ pub fn parse_yaml_doc(
                     path.clone(),
                     status_code,
                     runtime.clone(),
+                    false
                 ));
             }
         }

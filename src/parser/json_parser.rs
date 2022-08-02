@@ -58,12 +58,14 @@ pub fn parse_json_doc(
                     path.clone(),
                     401,
                     runtime.clone(),
+                    false
                 ));
                 endpoints.push(EndpointConfiguration::new(
                     method.clone(),
                     path.clone(),
                     403,
                     runtime.clone(),
+                    false
                 ));
             }
 
@@ -77,6 +79,7 @@ pub fn parse_json_doc(
                     path.clone(),
                     status_code,
                     runtime.clone(),
+                    false
                 ))
             }
         }

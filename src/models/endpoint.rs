@@ -13,11 +13,12 @@ pub struct EndpointConfiguration {
     pub path: String,
     pub status_code: u16,
     pub runtime: Arc<Runtime>,
+    pub is_generated: bool
 }
 
 impl EndpointConfiguration {
-    pub fn new(method: Method, path: String, status_code: u16, runtime: Arc<Runtime>) -> EndpointConfiguration {
-        EndpointConfiguration { method, path, status_code, runtime}
+    pub fn new(method: Method, path: String, status_code: u16, runtime: Arc<Runtime>, is_generated: bool) -> EndpointConfiguration {
+        EndpointConfiguration { method, path, status_code, runtime, is_generated}
     }
 }
 
@@ -32,8 +33,8 @@ mod tests {
 
     #[test]
     fn equality_checks_work() {
-        let endpoint_a = EndpointConfiguration::new(Method::GET, String::from("/test"), 200, Arc::from(create_mock_runtime()));
-        let endpoint_b = EndpointConfiguration::new(Method::GET, String::from("/test"), 200, Arc::from(create_mock_runtime()));
+        let endpoint_a = EndpointConfiguration::new(Method::GET, String::from("/test"), 200, Arc::from(create_mock_runtime()), false);
+        let endpoint_b = EndpointConfiguration::new(Method::GET, String::from("/test"), 200, Arc::from(create_mock_runtime()), false);
 
         assert!(endpoint_a == endpoint_b);
     }

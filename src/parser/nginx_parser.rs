@@ -105,6 +105,7 @@ fn parse_nginx_line(runtimes: &Vec<Arc<Runtime>>, line: &str) -> Result<Endpoint
         path,
         status,
         find_runtime_by_port(runtimes, port)?,
+        false
     ))
 }
 
