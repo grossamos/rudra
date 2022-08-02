@@ -9,7 +9,8 @@ use super::{OpenapiSource, RudraConfig, Runtime};
 const ENV_VAR_APP_BASE_URL: &str = "RUDRA_APP_BASE_URL";
 const ENV_VAR_DEBUG: &str = "RUDRA_DEBUG";
 const ENV_VAR_OPENAPI_SOURCE: &str = "RUDRA_OPENAPI_SOURCE";
-const ENV_VAR_ACCOUNT_FOR_SECURITY: &str = "RUDRA_ACCOUNT_FOR_SECURITY";
+const ENV_VAR_ACCOUNT_FOR_FORBIDDEN: &str = "RUDRA_ACCOUNT_FOR_FORBIDDEN";
+const ENV_VAR_ACCOUNT_FOR_UNAUTORIZED: &str = "RUDRA_ACCOUNT_FOR_UNAUTORIZED";
 const ENV_VAR_TEST_COVERAGE: &str = "RUDRA_TEST_COVERAGE";
 const ENV_VAR_PORT: &str = "RUDRA_PORT";
 const ENV_VAR_MAPPING: &str = "RUDRA_MAPPING";
@@ -43,7 +44,8 @@ impl RudraConfig {
 
         // fetch values from enviroment variables
         let debug = get_bool_env_var(ENV_VAR_DEBUG, env_vars);
-        let account_for_security = get_bool_env_var(ENV_VAR_ACCOUNT_FOR_SECURITY, env_vars);
+        let security_accounts_for_forbidden = get_bool_env_var(ENV_VAR_ACCOUNT_FOR_FORBIDDEN, env_vars);
+        let security_accounts_for_unautorized = get_bool_env_var(ENV_VAR_ACCOUNT_FOR_UNAUTORIZED, env_vars);
         let test_coverage = match env_vars.get(ENV_VAR_TEST_COVERAGE) {
             Some(coverage_str) => translate_test_coverage(coverage_str)?,
             None => 0.7,
@@ -86,7 +88,8 @@ impl RudraConfig {
 
         Ok(RudraConfig {
             debug,
-            account_for_security,
+            security_accounts_for_forbidden,
+            security_accounts_for_unautorized,
             test_coverage,
             runtimes,
         })
@@ -249,12 +252,12 @@ mod test {
     use crate::config::{
         environment::{
             get_bool_env_var, key_exists_and_is_not_empty, translate_test_coverage,
-            DEFAULT_TEST_COVERAGE, ENV_VAR_MAPPING, ENV_VAR_PORT, parse_complex_mapping, replace_escaped_sequences,
+            DEFAULT_TEST_COVERAGE, ENV_VAR_MAPPING, ENV_VAR_PORT, parse_complex_mapping, replace_escaped_sequences, ENV_VAR_ACCOUNT_FOR_UNAUTORIZED,
         },
         OpenapiSource,
     };
 
-    use super::{RudraConfig, ENV_VAR_APP_BASE_URL, ENV_VAR_DEBUG, ENV_VAR_OPENAPI_SOURCE, parse_untill_mapping_subdelimiter};
+    use super::{RudraConfig, ENV_VAR_APP_BASE_URL, ENV_VAR_DEBUG, ENV_VAR_OPENAPI_SOURCE, parse_untill_mapping_subdelimiter, ENV_VAR_ACCOUNT_FOR_FORBIDDEN};
 
     fn generate_config_map() -> HashMap<String, String> {
         let mut config_map = HashMap::new();
@@ -347,7 +350,7 @@ mod test {
         assert!(
             !RudraConfig::from_raw(&config_map)
                 .unwrap()
-                .account_for_security
+                .security_accounts_for_forbidden
         );
     }
 
@@ -581,4 +584,29 @@ mod test {
         assert_eq!(replace_escaped_sequences(test_str), test_str);
     }
 
+    #[test]
+    fn regocnises_forbidden_security_flag_in_config() {
+        let mut env_vars = generate_config_map();
+        env_vars.insert(ENV_VAR_ACCOUNT_FOR_FORBIDDEN.to_string(), "1".to_string());
+
+        let config = RudraConfig::from_raw(&env_vars).unwrap();
+        assert!(config.security_accounts_for_forbidden);
+    }
+
+    #[test]
+    fn regocnises_unautorized_security_flag_in_config() {
+        let mut env_vars = generate_config_map();
+        env_vars.insert(ENV_VAR_ACCOUNT_FOR_UNAUTORIZED.to_string(), "1".to_string());
+
+        let config = RudraConfig::from_raw(&env_vars).unwrap();
+        assert!(config.security_accounts_for_unautorized);
+    }
+
+    #[test]
+    fn security_is_off_by_default() {
+        let env_vars = generate_config_map();
+        let config = RudraConfig::from_raw(&env_vars).unwrap();
+        assert!(!config.security_accounts_for_unautorized);
+        assert!(!config.security_accounts_for_forbidden);
+    }
 }

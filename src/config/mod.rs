@@ -10,7 +10,8 @@ pub use nginx::configure_nginx;
 #[derive(Debug)]
 pub struct RudraConfig {
     pub debug: bool,
-    pub account_for_security: bool,
+    pub security_accounts_for_forbidden: bool,
+    pub security_accounts_for_unautorized: bool,
     pub test_coverage: f32,
     pub runtimes: Vec<Arc<Runtime>>,
 }
@@ -47,7 +48,7 @@ impl RudraConfig {
             println!(" - app_base_url: {}", self.runtimes[runtime_index].app_base_url);
             println!(" - port: {}", self.runtimes[runtime_index].port);
         }
-        println!(" - account_for_security: {}", self.account_for_security);
+        println!(" - account_for_security: {}", self.security_accounts_for_forbidden);
         println!(" - test_coverage: {}", self.test_coverage);
     }
 }
