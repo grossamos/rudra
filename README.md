@@ -16,7 +16,7 @@ Place the rudra preperation stage **after** your service is running and **before
 
 ```yaml
   - name: init rudra
-    uses: grossamos/rudra@v0.1.0
+    uses: grossamos/rudra@v0.1.1
     with:
       stage: "preperation"
       openapi-source: "docs/swagger.json"
@@ -34,7 +34,7 @@ Optionally set a desired `test-coverage` for your endpoints.
 Place the rudra evaluation stage somewhere after your integration tests have run.
 
 ```yaml
-  - uses: grossamos/rudra@v0.0.5-4
+  - uses: grossamos/rudra@v0.1.1
     name: eval rudra
     with:
       stage: "evaluation"
@@ -49,14 +49,21 @@ The reverse proxy is set up an configured in the first "preperation" stage.
 Analysis and any propagation of results occurs during the "evaluation" stage.
 
 ### Configuration options
-Option               | Description                                                                    | Values                      | Examples
----------------------|--------------------------------------------------------------------------------|-----------------------------|-----------------------
-stage                | Specifies which stage to use                                                   | `preperation`, `evaluation` | `preperation`
-openapi-source       | Location of openapi/swagger spec                                               | Path or URL                 | `docs/swagger.yaml`
-instance-url         | Base of service, excluding basepath from openapi                               | URL                         | `http://localhost:8080`
-debug                | Enables Debug mode (default off)                                               | boolean                     | `true`
-account-for-security | Take security annotations into account and require 401/403 cases (default off) | boolean                     | `true`
-test-coverage        | Coverage to enforce in evaluation stage                                        | Percentage or float         | `0.75`, `75%`
+Option                           | Description | Values | Examples
+---------------------------------|-------------|--------|---------
+account-for-security-forbidden   | Take security annotations into account and require 403 cases to be handled (default `false`) | boolean | `true`
+account-for-security-unautorized | Take security annotations into account and require 401 cases to be handled (default `false`) | boolean | `true`
+debug                            | Enables Debug mode (default `false`) | boolean | `true`
+instance-url                     | Base of service, excluding basepath from openapi | URL | `http://localhost:8080`
+openapi-source                   | Location of openapi/swagger spec | Path or URL | `docs/swagger.yaml`
+port                             | Port for rudra to listen on (default `13750`) | unsigned 16 bit integer | `13750`
+services                         | Configuartion for multiple services, conflicts with port, openapi-source, instance-url | `instance-url; openapi-source; port;\n` | <pre>
+services: |
+    http://localhost:8080; docs/swagger1.yaml; 13751;
+    http://localhost:8443; docs/swagger2.yaml; 13752;
+</pre>
+stage                            | Specifies which stage to use | `preperation`, `evaluation` | `preperation`
+test-coverage                    | Coverage to enforce in evaluation stage (default `70%`) | Percentage or float | `0.75`, `75%`
 
 ## Examples
 A reference pipeline can be point under <https://github.com/grossamos/rudra-example>.
