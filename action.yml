@@ -51,13 +51,31 @@ runs:
                     RUDRA_PORT="-p ${{inputs.port}}:${{inputs.port}}"
                 fi
                 RUDRA_MAPPING=""
+                if [[ "${{github.event.pull_request.base_ref}}" = "" ]]; then
+                    RUDRA_IS_MERGE="1"
+                    if [[ -f "${{RUDRA_OPENAPI_SOURCE}}" ]]; do
+                        cp ${{RUDRA_OPENAPI_SOURCE}} ${{RUDRA_OPENAPI_SOURCE}}.rudra.old
+                    fi
+                else
+                    RUDRA_IS_MERGE="0"
+                fi
             else
                 RUDRA_PORT="$(echo "${{inputs.services}}" | sed -r 's/([^;]|\\;)*;([^;]|\\;)*; ([0-9]+)\;/-p \3:\3/g' | sed 's/localhost/172.17.0.1/g' | tr '\n' ' ')"
                 RUDRA_MAPPING="${{inputs.services}}"
                 RUDRA_MAPPING="${RUDRA_MAPPING//$'\n'/RUDRA_LINE_SEPERATOR}"
                 RUDRA_MAPPING="${RUDRA_MAPPING//localhost/172.17.0.1}"
+                if [[ "${{github.event.pull_request.base_ref}}" = "" ]]; then
+                    RUDRA_IS_MERGE="1"
+                    for spec in $(echo $RUDRA_MAPPING | sed -r 's/([^;]|\\;)*;\W?(([^;]|\\;)*); ([0-9]+)\;/\2 /g'); do 
+                        if [[ -f "$spec" ]]; do
+                            cp $spec $spec.rudra.old
+                        fi
+                    done
+                else
+                    RUDRA_IS_MERGE="0"
+                fi
             fi
-            docker run --env RUDRA_DEBUG="${{inputs.debug}}" --env RUDRA_APP_BASE_URL="${RUDRA_APP_BASE_URL/localhost/172.17.0.1}" --env RUDRA_OPENAPI_SOURCE="${{inputs.openapi-source}}" --env RUDRA_ACCOUNT_FOR_FORBIDDEN="${{inputs.account-for-security-forbidden}}" --env RUDRA_ACCOUNT_FOR_UNAUTORIZED="${{inputs.account-for-security-unautorized}}" --env RUDRA_TEST_COVERAGE="${{inputs.test-coverage}}" --env RUDRA_PORT="${{inputs.port}}" --volume $PWD:/repo $RUDRA_PORT --env RUDRA_MAPPING="$RUDRA_MAPPING" --network rudra --name rudra -d grossamos/rudra:v0.1.1
+            docker run --env RUDRA_DEBUG="${{inputs.debug}}" --env RUDRA_APP_BASE_URL="${RUDRA_APP_BASE_URL/localhost/172.17.0.1}" --env RUDRA_OPENAPI_SOURCE="${{inputs.openapi-source}}" --env RUDRA_ACCOUNT_FOR_FORBIDDEN="${{inputs.account-for-security-forbidden}}" --env RUDRA_ACCOUNT_FOR_UNAUTORIZED="${{inputs.account-for-security-unautorized}}" --env RUDRA_TEST_COVERAGE="${{inputs.test-coverage}}" --env RUDRA_PORT="${{inputs.port}}" --volume $PWD:/repo $RUDRA_PORT --env RUDRA_MAPPING="$RUDRA_MAPPING" --env RUDRA_IS_MERGE="$RUDRA_IS_MERGE" --network rudra --name rudra -d grossamos/rudra:v0.1.1
             sleep 1
             docker logs rudra
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 

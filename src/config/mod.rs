@@ -14,6 +14,7 @@ pub struct RudraConfig {
     pub security_accounts_for_unautorized: bool,
     pub test_coverage: f32,
     pub runtimes: Vec<Arc<Runtime>>,
+    pub is_merge: bool,
 }
 
 #[derive(Debug)]

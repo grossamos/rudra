@@ -25,7 +25,10 @@ impl Evaluation {
         let missed_openapi_configurations = logged_endpoints;
 
         // filter generated endpoints out
-        let missed_openapi_configurations = missed_openapi_configurations.into_iter().filter(|x| !x.is_generated).collect();
+        let missed_openapi_configurations = missed_openapi_configurations
+            .into_iter()
+            .filter(|x| !x.is_generated)
+            .collect();
 
         Evaluation {
             missed_endpoint_configurations,
@@ -512,5 +515,26 @@ mod test {
         )];
         let eval = Evaluation::new(openapi_endpoints, logged_endpoints);
         assert_eq!(eval.missed_openapi_configurations.len(), 0)
+    }
+
+    #[test]
+    fn can_get_positive_diff_between_merges() {
+        // this test is currently duplicate but is needed if we ever change the internl eval logic
+        let mut pre_merge = vec![
+            create_endpoint_a(),
+            create_endpoint_b(),
+            create_endpoint_c(),
+        ];
+
+        let mut post_merge = vec![
+            create_endpoint_a(),
+            create_endpoint_c(),
+            create_endpoint_d(),
+        ];
+
+        remove_matching_endpoints(&mut post_merge, &mut pre_merge);
+
+        let new_endpoints = post_merge;
+        assert_eq!(new_endpoints, vec![create_endpoint_d()]);
     }
 }

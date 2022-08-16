@@ -14,6 +14,7 @@ const ENV_VAR_ACCOUNT_FOR_UNAUTORIZED: &str = "RUDRA_ACCOUNT_FOR_UNAUTORIZED";
 const ENV_VAR_TEST_COVERAGE: &str = "RUDRA_TEST_COVERAGE";
 const ENV_VAR_PORT: &str = "RUDRA_PORT";
 const ENV_VAR_MAPPING: &str = "RUDRA_MAPPING";
+const ENV_VAR_IS_MERGE: &str = "RUDRA_IS_MERGE";
 
 const DEFAULT_TEST_COVERAGE: f32 = 0.7;
 const DEFAULT_PORT: u16 = 13750;
@@ -50,6 +51,7 @@ impl RudraConfig {
             Some(coverage_str) => translate_test_coverage(coverage_str)?,
             None => 0.7,
         };
+        let is_merge = get_bool_env_var(ENV_VAR_IS_MERGE, env_vars);
 
         let runtimes = if !key_exists_and_is_not_empty(ENV_VAR_MAPPING, env_vars) {
             let openapi_source_str = match env_vars.get(ENV_VAR_OPENAPI_SOURCE) {
@@ -92,6 +94,7 @@ impl RudraConfig {
             security_accounts_for_unautorized,
             test_coverage,
             runtimes,
+            is_merge,
         })
     }
 

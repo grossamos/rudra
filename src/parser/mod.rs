@@ -34,16 +34,20 @@ pub fn parse_openapi_file(runtime: Arc<Runtime>, mount_point: &str) -> Result<Ve
         return Err(Error::OpenapiPathIsAbsolute(openapi_path.clone()))
     }
     let openapi_path: Box<Path> = Box::from(Path::new(mount_point).join(openapi_path));
-    let extension = match openapi_path.extension() {
-        Some(extension) => extension,
-        None => return Err(Error::UnknownOpenApiFormat),
+    let stripped_path_str = match openapi_path.to_str() {
+        Some(path_str) => match path_str.strip_suffix(".rudra.old") {
+            Some(path_str) => path_str,
+            None => path_str,
+        },
+        None => return Err(Error::ProblemOpeningFile(openapi_path)),
     };
-    if extension == "json" {
+
+    if stripped_path_str.ends_with("json") {
         Ok(parse_json_doc(&read_file_to_string_or_err(
             openapi_path.as_ref(),
             Error::ProblemOpeningFile(openapi_path.clone()),
         )?, runtime)?)
-    } else if extension == "yaml" || extension == "yml" {
+    } else if stripped_path_str.ends_with("yaml") || stripped_path_str.ends_with("yml") {
         Ok(parse_yaml_doc(&read_file_to_string_or_err(
             openapi_path.as_ref(),
             Error::ProblemOpeningFile(openapi_path.clone()),
@@ -81,5 +85,18 @@ mod tests {
         let mut runtime = create_mock_runtime();
         runtime.openapi_source = OpenapiSource::Path(Box::from(path));
         assert!(parse_openapi_file(Arc::from(runtime), "./").is_err())
+    }
+
+    #[test]
+    fn parses_old_file_correctly() {
+        let path = Path::new("./test/resource/swagger.yaml.rudra.old");
+        let mut runtime = create_mock_runtime();
+        runtime.openapi_source = OpenapiSource::Path(Box::from(path));
+        assert_eq!(parse_openapi_file(Arc::from(runtime), "./").unwrap().len(), 6);
+
+        let path = Path::new("./test/resource/swagger.json.rudra.old");
+        let mut runtime = create_mock_runtime();
+        runtime.openapi_source = OpenapiSource::Path(Box::from(path));
+        assert_eq!(parse_openapi_file(Arc::from(runtime), "./").unwrap().len(), 6);
     }
 }
