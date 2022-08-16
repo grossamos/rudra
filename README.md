@@ -57,17 +57,22 @@ debug                            | Enables Debug mode (default `false`) | boolea
 instance-url                     | Base of service, excluding basepath from openapi | URL | `http://localhost:8080`
 openapi-source                   | Location of openapi/swagger spec | Path or URL | `docs/swagger.yaml`
 port                             | Port for rudra to listen on (default `13750`) | unsigned 16 bit integer | `13750`
-services                         | Configuartion for multiple services, conflicts with port, openapi-source, instance-url | `instance-url; openapi-source; port;\n` | <pre>
-services: |
-    http://localhost:8080; docs/swagger1.yaml; 13751;
-    http://localhost:8443; docs/swagger2.yaml; 13752;
-</pre>
+services                         | Configuartion for multiple services, conflicts with port, openapi-source, instance-url | `instance-url; openapi-source; port;\n` | see [here](#multiple-services)
 stage                            | Specifies which stage to use | `preperation`, `evaluation` | `preperation`
 test-coverage                    | Coverage to enforce in evaluation stage (default `70%`) | Percentage or float | `0.75`, `75%`
 
 ## Examples
 A reference pipeline can be point under <https://github.com/grossamos/rudra-example>.
 It uses a go service and postman to serve as an example of how to integrate rudra into your application.
+
+### Multiple services
+A configuration with multiple endpoints and openapi specifications could look as follows:
+```yaml
+services: |
+    http://localhost:8080; docs/swagger1.yaml; 13751;
+    http://localhost:8443; docs/swagger2.yaml; 13752;
+```
+
 
 ## Local setup
 ### Install nix
