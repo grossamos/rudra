@@ -15,6 +15,7 @@ const ENV_VAR_TEST_COVERAGE: &str = "RUDRA_TEST_COVERAGE";
 const ENV_VAR_PORT: &str = "RUDRA_PORT";
 const ENV_VAR_MAPPING: &str = "RUDRA_MAPPING";
 const ENV_VAR_IS_MERGE: &str = "RUDRA_IS_MERGE";
+const ENV_VAR_ONLY_ACCOUNT_MERGE: &str = "RUDRA_ONLY_ACCOUNT_MERGE";
 
 const DEFAULT_TEST_COVERAGE: f32 = 0.7;
 const DEFAULT_PORT: u16 = 13750;
@@ -52,6 +53,7 @@ impl RudraConfig {
             None => 0.7,
         };
         let is_merge = get_bool_env_var(ENV_VAR_IS_MERGE, env_vars);
+        let only_account_for_merge = get_bool_env_var(ENV_VAR_ONLY_ACCOUNT_MERGE, env_vars);
 
         let runtimes = if !key_exists_and_is_not_empty(ENV_VAR_MAPPING, env_vars) {
             let openapi_source_str = match env_vars.get(ENV_VAR_OPENAPI_SOURCE) {
@@ -95,6 +97,7 @@ impl RudraConfig {
             test_coverage,
             runtimes,
             is_merge,
+            only_account_for_merge,
         })
     }
 
@@ -255,12 +258,12 @@ mod test {
     use crate::config::{
         environment::{
             get_bool_env_var, key_exists_and_is_not_empty, translate_test_coverage,
-            DEFAULT_TEST_COVERAGE, ENV_VAR_MAPPING, ENV_VAR_PORT, parse_complex_mapping, replace_escaped_sequences, ENV_VAR_ACCOUNT_FOR_UNAUTORIZED,
+            DEFAULT_TEST_COVERAGE, ENV_VAR_MAPPING, ENV_VAR_PORT, parse_complex_mapping, replace_escaped_sequences, ENV_VAR_ACCOUNT_FOR_UNAUTORIZED, ENV_VAR_ONLY_ACCOUNT_MERGE,
         },
         OpenapiSource,
     };
 
-    use super::{RudraConfig, ENV_VAR_APP_BASE_URL, ENV_VAR_DEBUG, ENV_VAR_OPENAPI_SOURCE, parse_untill_mapping_subdelimiter, ENV_VAR_ACCOUNT_FOR_FORBIDDEN};
+    use super::{RudraConfig, ENV_VAR_APP_BASE_URL, ENV_VAR_DEBUG, ENV_VAR_OPENAPI_SOURCE, parse_untill_mapping_subdelimiter, ENV_VAR_ACCOUNT_FOR_FORBIDDEN, ENV_VAR_IS_MERGE};
 
     fn generate_config_map() -> HashMap<String, String> {
         let mut config_map = HashMap::new();
@@ -611,5 +614,23 @@ mod test {
         let config = RudraConfig::from_raw(&env_vars).unwrap();
         assert!(!config.security_accounts_for_unautorized);
         assert!(!config.security_accounts_for_forbidden);
+    }
+
+    #[test]
+    fn regonises_merge() {
+        let mut env_vars = generate_config_map();
+        env_vars.insert(ENV_VAR_IS_MERGE.to_string(), "1".to_string());
+        env_vars.insert(ENV_VAR_OPENAPI_SOURCE.to_string(), "http://example.com".to_string());
+        let config = RudraConfig::from_raw(&env_vars).unwrap();
+        assert!(config.is_merge);
+    }
+
+    #[test]
+    fn recognises_if_account_merge() {
+        let mut env_vars = generate_config_map();
+        env_vars.insert(ENV_VAR_ONLY_ACCOUNT_MERGE.to_string(), "1".to_string());
+        env_vars.insert(ENV_VAR_OPENAPI_SOURCE.to_string(), "http://example.com".to_string());
+        let config = RudraConfig::from_raw(&env_vars).unwrap();
+        assert!(config.only_account_for_merge);
     }
 }

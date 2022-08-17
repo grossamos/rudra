@@ -25,6 +25,13 @@ pub fn get_openapi_endpoint_configs(runtime: Arc<Runtime>) -> Result<Vec<Endpoin
     }
 }
 
+pub fn get_pre_merge_openapi_endpoint_configs_from_file(runtime: Arc<Runtime>) -> Result<Vec<EndpointConfiguration>, Error> {
+    match runtime.openapi_source {
+        OpenapiSource::Url(_) => fetch_openapi_endpoints_for_runtime(runtime),
+        OpenapiSource::Path(_) => parse_openapi_file(runtime, OPENAPI_MOUNT_POINT),
+    }
+}
+
 pub fn parse_openapi_file(runtime: Arc<Runtime>, mount_point: &str) -> Result<Vec<EndpointConfiguration>, Error> {
     let openapi_path = match &runtime.openapi_source {
         OpenapiSource::Path(path) => path,

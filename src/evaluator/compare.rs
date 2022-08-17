@@ -152,6 +152,16 @@ fn filter_consecutive_duplicates<T: PartialEq>(set: &mut Vec<T>) {
     }
 }
 
+pub fn create_diff_from_endpoints(
+    pre_merge: &Vec<EndpointConfiguration>,
+    post_merge: &Vec<EndpointConfiguration>,
+) -> Vec<EndpointConfiguration> {
+    let mut pre_merge = pre_merge.clone();
+    let mut post_merge = post_merge.clone();
+    remove_matching_endpoints(&mut pre_merge, &mut post_merge);
+    pre_merge
+}
+
 #[cfg(test)]
 mod test {
     use std::sync::Arc;
@@ -159,7 +169,7 @@ mod test {
     use float_eq::assert_float_eq;
 
     use crate::{
-        evaluator::compare::filter_consecutive_duplicates,
+        evaluator::compare::{filter_consecutive_duplicates, create_diff_from_endpoints},
         models::{EndpointConfiguration, Method},
         utils::test::create_mock_runtime,
     };
@@ -520,21 +530,20 @@ mod test {
     #[test]
     fn can_get_positive_diff_between_merges() {
         // this test is currently duplicate but is needed if we ever change the internl eval logic
-        let mut pre_merge = vec![
+        let pre_merge = vec![
             create_endpoint_a(),
             create_endpoint_b(),
             create_endpoint_c(),
         ];
 
-        let mut post_merge = vec![
+        let post_merge = vec![
             create_endpoint_a(),
             create_endpoint_c(),
             create_endpoint_d(),
         ];
 
-        remove_matching_endpoints(&mut post_merge, &mut pre_merge);
+        let diff = create_diff_from_endpoints(&post_merge, &pre_merge);
 
-        let new_endpoints = post_merge;
-        assert_eq!(new_endpoints, vec![create_endpoint_d()]);
+        assert_eq!(diff, vec![create_endpoint_d()]);
     }
 }

@@ -1,9 +1,9 @@
 use std::process::{Command, Stdio};
 
 use config::{configure_nginx, RudraConfig};
-use evaluator::Evaluation;
+use evaluator::{Evaluation, create_diff_from_endpoints};
 use models::EndpointConfiguration;
-use parser::get_openapi_endpoint_configs;
+use parser::{get_openapi_endpoint_configs, get_pre_merge_openapi_endpoint_configs_from_file};
 use utils::print_debug_message;
 
 use crate::{parser::parse_nginx_access_log, utils::print_error_and_exit};
@@ -56,6 +56,27 @@ pub fn initialize_rudra() -> (RudraConfig, Vec<EndpointConfiguration>) {
         };
         openapi_endpoints.append(&mut endpoints);
     }
+
+    // filter out impossible szenarios, where they require only_account_for_merge but nothing can
+    // be compared
+    if config.only_account_for_merge && !config.can_print_merge_info() {
+        if config.is_merge {
+            print_error_and_exit("Your configuration contains a dynamically loaded openapi spec. Rudra needs it to be a local file when only accounting for the difference between commits.");
+        } else {
+            print_error_and_exit("You need to have two commits to compare (ex. pull/merge request) when only accounting for the difference between commits.");
+        }
+    }
+
+    let mut old_openapi_endpoints = vec![];
+    for runtime in &config.runtimes {
+        let mut endpoints = match get_pre_merge_openapi_endpoint_configs_from_file(runtime.clone()) {
+            Ok(endpoints) => endpoints,
+            Err(err) => err.display_error_and_exit(),
+        };
+        old_openapi_endpoints.append(&mut endpoints);
+    }
+
+    let _merge_diff_endpoints = create_diff_from_endpoints(&openapi_endpoints, &old_openapi_endpoints);
 
     (config, openapi_endpoints)
 }
