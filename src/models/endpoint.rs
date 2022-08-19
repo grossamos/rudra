@@ -22,7 +22,6 @@ impl EndpointConfiguration {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

@@ -1,7 +1,7 @@
 use std::process::{Command, Stdio};
 
 use config::{configure_nginx, RudraConfig};
-use evaluator::{Evaluation, create_diff_from_endpoints};
+use evaluator::{create_diff_from_endpoints, Evaluation};
 use models::EndpointConfiguration;
 use parser::{get_openapi_endpoint_configs, get_pre_merge_openapi_endpoint_configs_from_file};
 use utils::print_debug_message;
@@ -42,7 +42,10 @@ pub fn run_nginx(config: &RudraConfig) {
     }
 }
 
-pub fn initialize_rudra() -> (RudraConfig, Vec<EndpointConfiguration>) {
+pub fn initialize_rudra() -> (
+    RudraConfig,
+    Vec<EndpointConfiguration>,
+) {
     let config = match RudraConfig::from_env() {
         Ok(config) => config,
         Err(error) => error.display_error_and_exit(),
@@ -65,23 +68,29 @@ pub fn initialize_rudra() -> (RudraConfig, Vec<EndpointConfiguration>) {
         } else {
             print_error_and_exit("You need to have two commits to compare (ex. pull/merge request) when only accounting for the difference between commits.");
         }
-    }
+    } else if config.is_merge {
+        let mut old_openapi_endpoints = vec![];
+        for runtime in &config.runtimes {
+            let mut endpoints =
+                match get_pre_merge_openapi_endpoint_configs_from_file(runtime.clone()) {
+                    Ok(endpoints) => endpoints,
+                    Err(err) => err.display_error_and_exit(),
+                };
+            old_openapi_endpoints.append(&mut endpoints);
+        }
 
-    let mut old_openapi_endpoints = vec![];
-    for runtime in &config.runtimes {
-        let mut endpoints = match get_pre_merge_openapi_endpoint_configs_from_file(runtime.clone()) {
-            Ok(endpoints) => endpoints,
-            Err(err) => err.display_error_and_exit(),
-        };
-        old_openapi_endpoints.append(&mut endpoints);
-    }
-
-    let _merge_diff_endpoints = create_diff_from_endpoints(&openapi_endpoints, &old_openapi_endpoints);
-
+        openapi_endpoints = create_diff_from_endpoints(
+            &openapi_endpoints,
+            &old_openapi_endpoints,
+        );
+    } 
     (config, openapi_endpoints)
 }
 
-pub fn run_eval(config: &RudraConfig, openapi_endpoints: Vec<EndpointConfiguration>) -> Evaluation {
+pub fn run_eval(
+    config: &RudraConfig,
+    openapi_endpoints: Vec<EndpointConfiguration>,
+) -> Evaluation {
     print_debug_message("Evaluating endpoint coverage");
 
     let nginx_endpoints = match parse_nginx_access_log(&config.runtimes) {

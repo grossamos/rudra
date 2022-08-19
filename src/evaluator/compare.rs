@@ -169,7 +169,7 @@ mod test {
     use float_eq::assert_float_eq;
 
     use crate::{
-        evaluator::compare::{filter_consecutive_duplicates, create_diff_from_endpoints},
+        evaluator::compare::{create_diff_from_endpoints, filter_consecutive_duplicates},
         models::{EndpointConfiguration, Method},
         utils::test::create_mock_runtime,
     };
