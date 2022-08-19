@@ -41,6 +41,10 @@ impl Evaluation {
         let sorted_missed_endpoint_configs = sort_by_runtime(&self.missed_endpoint_configurations);
         let sorted_missed_openapi_configs = sort_by_runtime(&self.missed_openapi_configurations);
         for runtime in &config.runtimes {
+            if config.only_account_for_merge {
+                println!("info: only taking endpoints from merge into account for evaluation accounting for endpoints")
+            }
+
             let mut nothing_missed = true;
             if config.runtimes.len() > 1 {
                 println!(
