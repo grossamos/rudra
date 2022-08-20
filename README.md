@@ -2,6 +2,8 @@
 Rudra is an openapi based test coverage analysis tool.
 It allows teams to set and enforce coverage levels for integration tests in CI/CD-pipelines.
 
+Contributions to the project are allways welcome, please consult [CONTIBUTING.md](./CONTRIBUTING.md) for more information.
+
 **NOTE: rudra is still under development and not yet production ready**
 
 ## Quickstart

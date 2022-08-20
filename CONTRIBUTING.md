@@ -57,5 +57,11 @@ docker run --env RUDRA_APP_BASE_URL=http://app:8080 --env RUDRA_OPENAPI_SOURCE=/
 
 ## Submitting Issues
 - Please search for existing issues first, it is possible your issue has been reported already
-- Titles of issues should have the following structure: ``<Subsystem>: Description of issue``
+- Titles of issues should have the following structure: ``<Subsystem>: <Description of issue>``
 - Issues pertaining to ``rudra-example`` or documentation can also be reported in this repository
+- When submitting issues
+
+## Submitting Pull Requests
+- If you're looking for tasks to start with, please filter for issues with the ``good first issue`` tag.
+- When creating a pull request please keep in mind to reference the issue you are attempting to solve
+- When creating a Pull Request for something that doesn't yet have an issue, please describe the problem your pull request is attempting to solve
