@@ -33,6 +33,9 @@ inputs:
   services:
     description: 'A mapping for multiple services with different specs and basepaths'
     required: false
+  only-account-for-pr:
+    description: 'Indicates if only the changes of a PR should be taken into account when available'
+    required: false
 runs:
   using: "composite"
   steps:
@@ -75,7 +78,7 @@ runs:
                     RUDRA_IS_MERGE="0"
                 fi
             fi
-            docker run --env RUDRA_DEBUG="${{inputs.debug}}" --env RUDRA_APP_BASE_URL="${RUDRA_APP_BASE_URL/localhost/172.17.0.1}" --env RUDRA_OPENAPI_SOURCE="${{inputs.openapi-source}}" --env RUDRA_ACCOUNT_FOR_FORBIDDEN="${{inputs.account-for-security-forbidden}}" --env RUDRA_ACCOUNT_FOR_UNAUTORIZED="${{inputs.account-for-security-unautorized}}" --env RUDRA_TEST_COVERAGE="${{inputs.test-coverage}}" --env RUDRA_PORT="${{inputs.port}}" --volume $PWD:/repo $RUDRA_PORT --env RUDRA_MAPPING="$RUDRA_MAPPING" --env RUDRA_IS_MERGE="$RUDRA_IS_MERGE" --network rudra --name rudra -d grossamos/rudra:v0.1.2
+            docker run --env RUDRA_DEBUG="${{inputs.debug}}" --env RUDRA_APP_BASE_URL="${RUDRA_APP_BASE_URL/localhost/172.17.0.1}" --env RUDRA_OPENAPI_SOURCE="${{inputs.openapi-source}}" --env RUDRA_ACCOUNT_FOR_FORBIDDEN="${{inputs.account-for-security-forbidden}}" --env RUDRA_ACCOUNT_FOR_UNAUTORIZED="${{inputs.account-for-security-unautorized}}" --env RUDRA_TEST_COVERAGE="${{inputs.test-coverage}}" --env RUDRA_PORT="${{inputs.port}}" --volume $PWD:/repo $RUDRA_PORT --env RUDRA_MAPPING="$RUDRA_MAPPING" --env RUDRA_IS_MERGE="$RUDRA_IS_MERGE" --env RUDRA_ONLY_ACCOUNT_MERGE="${{inputs.only-account-for-pr}}" --network rudra --name rudra -d grossamos/rudra:v0.1.2
             sleep 1
             docker logs rudra
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 

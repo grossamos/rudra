@@ -57,6 +57,7 @@ account-for-security-forbidden   | Take security annotations into account and re
 account-for-security-unautorized | Take security annotations into account and require 401 cases to be handled (default `false`) | boolean | `true`
 debug                            | Enables Debug mode (default `false`) | boolean | `true`
 instance-url                     | Base of service, excluding basepath from openapi | URL | `http://localhost:8080`
+only-account-for-pr              | Indictates if only changes within a PR should be taken into account, doesn't take effekt outside a PR (default: `false`) | boolean | `true`
 openapi-source                   | Location of openapi/swagger spec | Path or URL | `docs/swagger.yaml`
 port                             | Port for rudra to listen on (default `13750`) | unsigned 16 bit integer | `13750`
 services                         | Configuartion for multiple services, conflicts with port, openapi-source, instance-url | `instance-url; openapi-source; port;\n` | see [here](#multiple-services)

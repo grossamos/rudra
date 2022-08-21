@@ -68,7 +68,7 @@ pub fn initialize_rudra() -> (
         } else {
             print_error_and_exit("You need to have two commits to compare (ex. pull/merge request) when only accounting for the difference between commits.");
         }
-    } else if config.is_merge {
+    } else if config.is_merge && config.only_account_for_merge {
         let mut old_openapi_endpoints = vec![];
         for runtime in &config.runtimes {
             let mut endpoints =
