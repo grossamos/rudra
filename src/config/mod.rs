@@ -56,10 +56,7 @@ impl RudraConfig {
         println!(" - test_coverage: {}", self.test_coverage);
     }
 
-    pub fn can_print_merge_info(&self) -> bool {
-        if !self.is_merge {
-            return false;
-        }
+    pub fn all_openapi_sources_are_paths(&self) -> bool {
         for runtime in &self.runtimes {
             match runtime.openapi_source {
                 OpenapiSource::Url(_) => return false,
@@ -81,15 +78,6 @@ mod tests {
     use super::{OpenapiSource, Runtime};
 
     #[test]
-    fn should_only_print_merge_if_is_merge() {
-        let mut config = create_mock_config();
-        config.is_merge = false;
-        config.runtimes = vec![];
-
-        assert!(!config.can_print_merge_info())
-    }
-
-    #[test]
     fn should_only_print_merge_if_openapi_source_is_file() {
         let mut config = create_mock_config();
         config.is_merge = true;
@@ -99,7 +87,7 @@ mod tests {
             port: 8080,
         })];
 
-        assert!(!config.can_print_merge_info())
+        assert!(!config.all_openapi_sources_are_paths())
     }
 
     #[test]
@@ -112,6 +100,6 @@ mod tests {
             port: 8080,
         })];
 
-        assert!(config.can_print_merge_info())
+        assert!(config.all_openapi_sources_are_paths())
     }
 }

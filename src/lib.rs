@@ -62,7 +62,7 @@ pub fn initialize_rudra() -> (
 
     // filter out impossible szenarios, where they require only_account_for_merge but nothing can
     // be compared
-    if config.only_account_for_merge && !config.can_print_merge_info() {
+    if config.only_account_for_merge && !config.all_openapi_sources_are_paths() {
         if config.is_merge {
             print_error_and_exit("Your configuration contains a dynamically loaded openapi spec. Rudra needs it to be a local file when only accounting for the difference between commits.");
         } else {
