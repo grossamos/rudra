@@ -56,7 +56,7 @@ runs:
                 RUDRA_MAPPING=""
                 if [[ "${{github.event.pull_request.base_ref}}" = "" ]]; then
                     RUDRA_IS_MERGE="1"
-                    if [[ -f "${{inputs.openapi-source}}" ]]; do
+                    if [[ -f "${{inputs.openapi-source}}" ]]; then
                         cp ${{inputs.openapi-source}} ${{inputs.openapi-source}}.rudra.old
                     fi
                 else
@@ -70,7 +70,7 @@ runs:
                 if [[ "${{github.event.pull_request.base_ref}}" = "" ]]; then
                     RUDRA_IS_MERGE="1"
                     for spec in $(echo $RUDRA_MAPPING | sed -r 's/([^;]|\\;)*;\W?(([^;]|\\;)*); ([0-9]+)\;/\2 /g'); do 
-                        if [[ -f "$spec" ]]; do
+                        if [[ -f "$spec" ]]; then
                             cp $spec $spec.rudra.old
                         fi
                     done
