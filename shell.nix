@@ -8,4 +8,14 @@ pkgs.mkShell {
     pkgs.rust-analyzer
     pkgs.openssl
   ];
+  shellHook = ''
+    function update_tag() {
+      git tag -d $1
+      git push --delete origin $1
+      git tag $1
+      git push --tags
+    }
+    export -f update_tag
+  '';
+
 }

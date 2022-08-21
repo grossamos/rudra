@@ -56,8 +56,8 @@ runs:
                 RUDRA_MAPPING=""
                 if [[ "${{github.event.pull_request.base_ref}}" = "" ]]; then
                     RUDRA_IS_MERGE="1"
-                    if [[ -f "${{openapi-source}}" ]]; do
-                        cp ${{openapi-source}} ${{openapi-source}}.rudra.old
+                    if [[ -f "${{inputs.openapi-source}}" ]]; do
+                        cp ${{inputs.openapi-source}} ${{inputs.openapi-source}}.rudra.old
                     fi
                 else
                     RUDRA_IS_MERGE="0"
