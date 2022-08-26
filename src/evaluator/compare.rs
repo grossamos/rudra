@@ -15,13 +15,13 @@ pub struct Evaluation {
 
 impl Evaluation {
     pub fn new(
-        mut openapi_endpoints: Vec<EndpointConfiguration>,
+        mut relevant_openapi_endpoints: Vec<EndpointConfiguration>,
         mut logged_endpoints: Vec<EndpointConfiguration>,
     ) -> Evaluation {
-        let original_openapi_endpoint_count = openapi_endpoints.len();
-        remove_matching_endpoints(&mut openapi_endpoints, &mut logged_endpoints);
+        let original_openapi_endpoint_count = relevant_openapi_endpoints.len();
+        remove_matching_endpoints(&mut relevant_openapi_endpoints, &mut logged_endpoints);
 
-        let missed_endpoint_configurations = openapi_endpoints;
+        let missed_endpoint_configurations = relevant_openapi_endpoints;
         let missed_openapi_configurations = logged_endpoints;
 
         // filter generated endpoints out
@@ -37,7 +37,10 @@ impl Evaluation {
         }
     }
 
-    pub fn print_results(&self, config: &RudraConfig) {
+    pub fn print_results(&self, config: &RudraConfig, mut endpoints_not_missed: Vec<EndpointConfiguration>) {
+        let mut modified_missed_openapi_configurations = self.missed_openapi_configurations.clone();
+        remove_matching_endpoints(&mut modified_missed_openapi_configurations, &mut endpoints_not_missed);
+
         let sorted_missed_endpoint_configs = sort_by_runtime(&self.missed_endpoint_configurations);
         let sorted_missed_openapi_configs = sort_by_runtime(&self.missed_openapi_configurations);
         for runtime in &config.runtimes {
@@ -156,7 +159,7 @@ fn filter_consecutive_duplicates<T: PartialEq>(set: &mut Vec<T>) {
     }
 }
 
-pub fn create_diff_from_endpoints(
+pub fn get_change_from_merge(
     pre_merge: &Vec<EndpointConfiguration>,
     post_merge: &Vec<EndpointConfiguration>,
 ) -> Vec<EndpointConfiguration> {
@@ -173,7 +176,7 @@ mod test {
     use float_eq::assert_float_eq;
 
     use crate::{
-        evaluator::compare::{create_diff_from_endpoints, filter_consecutive_duplicates},
+        evaluator::compare::{get_change_from_merge, filter_consecutive_duplicates},
         models::{EndpointConfiguration, Method},
         utils::test::create_mock_runtime,
     };
@@ -546,7 +549,7 @@ mod test {
             create_endpoint_d(),
         ];
 
-        let diff = create_diff_from_endpoints(&post_merge, &pre_merge);
+        let diff = get_change_from_merge(&post_merge, &pre_merge);
 
         assert_eq!(diff, vec![create_endpoint_d()]);
     }

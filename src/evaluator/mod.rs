@@ -1,3 +1,3 @@
 mod compare;
 pub use compare::Evaluation;
-pub use compare::create_diff_from_endpoints;
+pub use compare::get_change_from_merge;

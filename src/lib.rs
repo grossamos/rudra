@@ -1,9 +1,9 @@
 use std::process::{Command, Stdio};
 
 use config::{configure_nginx, RudraConfig};
-use evaluator::{create_diff_from_endpoints, Evaluation};
+use evaluator::{get_change_from_merge, Evaluation};
 use models::EndpointConfiguration;
-use parser::{get_openapi_endpoint_configs, get_pre_merge_openapi_endpoint_configs_from_file};
+use parser::{get_openapi_endpoint_configs, get_relevant_endpoints_for_merge};
 use utils::print_debug_message;
 
 use crate::{parser::parse_nginx_access_log, utils::print_error_and_exit};
@@ -42,10 +42,7 @@ pub fn run_nginx(config: &RudraConfig) {
     }
 }
 
-pub fn initialize_rudra() -> (
-    RudraConfig,
-    Vec<EndpointConfiguration>,
-) {
+pub fn initialize_rudra() -> (RudraConfig, Vec<EndpointConfiguration>, Vec<EndpointConfiguration>) {
     let config = match RudraConfig::from_env() {
         Ok(config) => config,
         Err(error) => error.display_error_and_exit(),
@@ -59,6 +56,8 @@ pub fn initialize_rudra() -> (
         };
         openapi_endpoints.append(&mut endpoints);
     }
+    let relevant_openapi_endpoints;
+    let other_openapi_endpoints;
 
     // filter out impossible szenarios, where they require only_account_for_merge but nothing can
     // be compared
@@ -69,28 +68,27 @@ pub fn initialize_rudra() -> (
             print_error_and_exit("You need to have two commits to compare (ex. pull/merge request) when only accounting for the difference between commits.");
         }
     } else if config.is_merge && config.only_account_for_merge {
-        let mut old_openapi_endpoints = vec![];
+        let mut pre_merge_endpoints = vec![];
+
         for runtime in &config.runtimes {
-            let mut endpoints =
-                match get_pre_merge_openapi_endpoint_configs_from_file(runtime.clone()) {
-                    Ok(endpoints) => endpoints,
-                    Err(err) => err.display_error_and_exit(),
-                };
-            old_openapi_endpoints.append(&mut endpoints);
+            let mut pre_merge_endpoints_of_runtime = match get_relevant_endpoints_for_merge(runtime.clone()) {
+                Ok(endpoints) => endpoints,
+                Err(err) => err.display_error_and_exit(),
+            };
+            pre_merge_endpoints.append(&mut pre_merge_endpoints_of_runtime);
         }
 
-        openapi_endpoints = create_diff_from_endpoints(
-            &openapi_endpoints,
-            &old_openapi_endpoints,
-        );
-    } 
-    (config, openapi_endpoints)
+        relevant_openapi_endpoints =
+            get_change_from_merge(&openapi_endpoints, &pre_merge_endpoints);
+        other_openapi_endpoints = openapi_endpoints;
+    } else {
+        relevant_openapi_endpoints = openapi_endpoints;
+        other_openapi_endpoints = vec![];
+    }
+    (config, relevant_openapi_endpoints, other_openapi_endpoints)
 }
 
-pub fn run_eval(
-    config: &RudraConfig,
-    openapi_endpoints: Vec<EndpointConfiguration>,
-) -> Evaluation {
+pub fn run_eval(config: &RudraConfig, openapi_endpoints: Vec<EndpointConfiguration>) -> Evaluation {
     print_debug_message("Evaluating endpoint coverage");
 
     let nginx_endpoints = match parse_nginx_access_log(&config.runtimes) {
@@ -101,13 +99,13 @@ pub fn run_eval(
     Evaluation::new(openapi_endpoints, nginx_endpoints)
 }
 
-pub fn publish_results(config: &RudraConfig, eval: &Evaluation) {
+pub fn publish_results(config: &RudraConfig, eval: &Evaluation, other_openapi_endpoints: Vec<EndpointConfiguration>) {
     if eval.has_gateway_issues() {
         println!("Warning: A large number of 502 errors occured. Is your service running?")
     }
     let coverage = eval.calc_test_coverage();
     println!("Results:");
-    eval.print_results(config);
+    eval.print_results(config, other_openapi_endpoints);
     println!("Test coverage: {}%", coverage * 100.0);
     if coverage < config.test_coverage {
         print_error_and_exit("Coverage not sufficient");
