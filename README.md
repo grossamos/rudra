@@ -18,7 +18,7 @@ Place the rudra preperation stage **after** your service is running and **before
 
 ```yaml
   - name: init rudra
-    uses: grossamos/rudra@v0.1.1
+    uses: grossamos/rudra@v0.1.2
     with:
       stage: "preperation"
       openapi-source: "docs/swagger.json"
@@ -36,7 +36,7 @@ Optionally set a desired `test-coverage` for your endpoints.
 Place the rudra evaluation stage somewhere after your integration tests have run.
 
 ```yaml
-  - uses: grossamos/rudra@v0.1.1
+  - uses: grossamos/rudra@v0.1.2
     name: eval rudra
     with:
       stage: "evaluation"
@@ -65,8 +65,28 @@ stage                            | Specifies which stage to use | `preperation`,
 test-coverage                    | Coverage to enforce in evaluation stage (default `70%`) | Percentage or float | `0.75`, `75%`
 
 ## Examples
+
+## Rudra Example
 A reference pipeline can be point under <https://github.com/grossamos/rudra-example>.
 It uses a go service and postman to serve as an example of how to integrate rudra into your application.
+
+The pipeline in rudra-example is structured as follows:
+```yaml
+  - uses: grossamos/rudra@v0.1.2
+    name: init rudra
+    with:
+      stage: "preperation"
+      openapi-source: "docs/swagger.json"
+      instance-url: "http://localhost:8080"
+      account-for-security-forbidden: true
+      test-coverage: "90%"
+      only-account-for-pr: true
+# ... Integration tests ...
+  - uses: grossamos/rudra@v0.1.2
+    name: eval rudra
+    with:
+      stage: "evaluation"
+```
 
 ### Multiple services
 A configuration with multiple endpoints and openapi specifications could look as follows:
