@@ -39,9 +39,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0 
     - shell: bash
       run: |
-        if [[ "${{inputs.stage}}" = "preperation" ]]; then 
+        if [[ "${{inputs.stage}}" = "preperation" && "$GITHUB_BASE_REF" != "" ]]; then 
             docker network create rudra 
             for line in $(docker ps -q); do 
                 docker network connect rudra $line; 
@@ -54,10 +57,10 @@ runs:
                     RUDRA_PORT="-p ${{inputs.port}}:${{inputs.port}}"
                 fi
                 RUDRA_MAPPING=""
-                if [[ "${{github.event.pull_request.base_ref}}" = "" ]]; then
+                if [[ "$GITHUB_BASE_REF" != "" ]]; then
                     RUDRA_IS_MERGE="1"
                     if [[ -f "${{inputs.openapi-source}}" ]]; then
-                        cp ${{inputs.openapi-source}} ${{inputs.openapi-source}}.rudra.old
+                        git show ${{github.event.pull_request.base.sha}}:${{inputs.openapi-source}} > ${{inputs.openapi-source}}.rudra.old
                     fi
                 else
                     RUDRA_IS_MERGE="0"
@@ -67,11 +70,11 @@ runs:
                 RUDRA_MAPPING="${{inputs.services}}"
                 RUDRA_MAPPING="${RUDRA_MAPPING//$'\n'/RUDRA_LINE_SEPERATOR}"
                 RUDRA_MAPPING="${RUDRA_MAPPING//localhost/172.17.0.1}"
-                if [[ "${{github.event.pull_request.base_ref}}" = "" ]]; then
+                if [[ "$GITHUB_BASE_REF" != "" ]]; then
                     RUDRA_IS_MERGE="1"
                     for spec in $(echo $RUDRA_MAPPING | sed -r 's/([^;]|\\;)*;\W?(([^;]|\\;)*); ([0-9]+)\;/\2 /g'); do 
                         if [[ -f "$spec" ]]; then
-                            cp $spec $spec.rudra.old
+                            git show ${{github.event.pull_request.base.sha}}:$spec > $spec.rudra.old
                         fi
                     done
                 else
@@ -82,7 +85,10 @@ runs:
             sleep 1
             docker logs rudra
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
-        elif [[ "${{inputs.stage}}" = "evaluation" ]]; then 
+        fi
+    - shell: bash
+      run: |
+        if [[ "${{inputs.stage}}" = "evaluation" ]]; then 
             if [[ "${{inputs.openapi-source}}" != "" || "${{inputs.instance-url}}" != "" || "${{inputs.test-coverage}}" != "" || "${{inputs.debug}}" != "" || "${{inputs.account-for-security-unautorized}}" != "" || "${{inputs.account-for-security-forbidden}}" != "" || "${{inputs.services}}" != "" ]]; then 
                 echo "Please configure rudra in the preperation stage and do not add configuration parameters (outside of stage) here" 
                 exit 1 
@@ -91,7 +97,10 @@ runs:
             sleep 1
             docker logs rudra
             exit $(docker container inspect --format '{{.State.ExitCode}}' rudra) 
-        else 
+        fi
+    - shell: bash
+      run: |
+        if [[ "${{inputs.stage}}" != "evaluation" && "${{inputs.stage}}" != "preperation" ]]; then 
             echo "Please provide a stage name of either \"preperation\" or \"evaluation\"" 
             exit 1 
         fi 
