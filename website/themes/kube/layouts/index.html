@@ -1,0 +1,41 @@
+{{ define "title"}} {{ .Site.Title}} {{end}}
+{{ define "header"}} {{ partial "header" .}} {{end}}
+{{ define "main"}}
+
+<div id="main">
+  <div id="hero">
+    <h1>{{.Title}}</h1>
+    <p>{{.Description}}</p>
+  </div>
+  <div id="action-buttons">
+    <a class="button primary big" href="/docs/quick-start/" onclick="_gaq.push(['_trackEvent', 'kube', 'download']);">Get Started</a> <a class="button outline big" href="https://github.com/marketplace/actions/rudra-for-openapi-test-coverage" onclick="_gaq.push(['_trackEvent', 'kube', 'github']);">View on Github</a>
+  </div>
+  <div id="kube-features">
+    <div class="row gutters">
+      <div class="col col-4 item">
+        <figure>
+          <img alt="OpenAPI" height="48" src="{{ "/img/kube/icon-baseline.png" | relURL }}" width="48">
+        </figure>
+        <h3>OpenAPI based</h3>
+        <p>In Kube horizontal rhythm based on a 4px vertical grid is something that we are truly proud of.</p>
+      </div>
+      <div class="col col-4 item">
+        <figure>
+          <img alt="Multilingual" height="48" src="{{ "/img/kube/icon-typo.png" | relURL }}" width="48">
+        </figure>
+        <h3>Multilingual</h3>
+        <p>We obsess over typography, and it shows throughout Kube.</p>
+      </div>
+      <div class="col col-4 item">
+        <figure>
+          <img alt="Modular" height="48" src="{{ "/img/kube/icon-minimalism.png" | relURL }}" width="48">
+        </figure>
+        <h3>Modular</h3>
+        <p>Optimise Rudra for your use-case and only enforce testing where you need it.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+{{ end }}
+{{ define "footer"}} {{ partial "footer" .}} {{end}}

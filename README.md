@@ -8,13 +8,19 @@ Contributions to the project are allways welcome, please consult [CONTIBUTING.md
 
 ## Quickstart
 #### Step 1: Point your integration tests to rudra
-For rudra to work, you have to point your integration tests to the rudra reverse proxy.
-In postman for example this can be done by creating a new environment and modifying a base url.
+First point your integration tests to the Rudra reverse proxy.
+This ensures that Rudra can analyze an interpret requests happening during your integration tests.
 
-Point your tests towards `http://localhost:13750` or `http://rudra:13750`.
+Point your tests towards `http://localhost:13750` (without Docker) or `http://rudra:13750` (with Docker).
+When using Docker Rudra will automatically configure networking for your container to connect to it.
 
-#### Step 2: Add a configuration step
-Place the rudra preperation stage **after** your service is running and **before** you'll run your integration tests.
+#### Step 2: Add a preperation step
+Configure Rudra in a preperation Stage.
+This will set up Rudra for later use.
+Place this preperation stage **after** you've started your service and **before** you'll run your integration tests.
+
+Remeber to replace the location of your OpenAPI spec and the instance URL.
+The OpenAPI Spec can also be provided via a link.
 
 ```yaml
   - name: init rudra
