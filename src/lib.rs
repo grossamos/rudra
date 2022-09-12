@@ -3,7 +3,7 @@ use std::process::{Command, Stdio};
 use config::{configure_nginx, RudraConfig};
 use evaluator::{get_change_from_merge, Evaluation};
 use models::EndpointConfiguration;
-use parser::{get_openapi_endpoint_configs, get_relevant_endpoints_for_merge};
+use parser::{get_openapi_endpoint_configs, get_pre_merge_openapi_endpoints};
 use utils::print_debug_message;
 
 use crate::{parser::parse_nginx_access_log, utils::print_error_and_exit};
@@ -71,7 +71,7 @@ pub fn initialize_rudra() -> (RudraConfig, Vec<EndpointConfiguration>, Vec<Endpo
         let mut pre_merge_endpoints = vec![];
 
         for runtime in &config.runtimes {
-            let mut pre_merge_endpoints_of_runtime = match get_relevant_endpoints_for_merge(runtime.clone()) {
+            let mut pre_merge_endpoints_of_runtime = match get_pre_merge_openapi_endpoints(runtime.clone()) {
                 Ok(endpoints) => endpoints,
                 Err(err) => err.display_error_and_exit(),
             };
@@ -88,7 +88,7 @@ pub fn initialize_rudra() -> (RudraConfig, Vec<EndpointConfiguration>, Vec<Endpo
     (config, relevant_openapi_endpoints, other_openapi_endpoints)
 }
 
-pub fn run_eval(config: &RudraConfig, openapi_endpoints: Vec<EndpointConfiguration>) -> Evaluation {
+pub fn run_eval(config: &RudraConfig, relevant_openapi_endpoints: Vec<EndpointConfiguration>) -> Evaluation {
     print_debug_message("Evaluating endpoint coverage");
 
     let nginx_endpoints = match parse_nginx_access_log(&config.runtimes) {
@@ -96,7 +96,7 @@ pub fn run_eval(config: &RudraConfig, openapi_endpoints: Vec<EndpointConfigurati
         Err(_) => print_error_and_exit("An unexpected error occured while parsing the nginx logs"),
     };
 
-    Evaluation::new(openapi_endpoints, nginx_endpoints)
+    Evaluation::new(relevant_openapi_endpoints, nginx_endpoints)
 }
 
 pub fn publish_results(config: &RudraConfig, eval: &Evaluation, other_openapi_endpoints: Vec<EndpointConfiguration>) {

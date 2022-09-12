@@ -54,6 +54,8 @@ impl RudraConfig {
             self.security_accounts_for_forbidden
         );
         println!(" - test_coverage: {}", self.test_coverage);
+        println!(" - is_merge: {}", self.is_merge);
+        println!(" - only_account_for_merge: {}", self.only_account_for_merge);
     }
 
     pub fn all_openapi_sources_are_paths(&self) -> bool {

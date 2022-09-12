@@ -42,7 +42,7 @@ impl Evaluation {
         remove_matching_endpoints(&mut modified_missed_openapi_configurations, &mut endpoints_not_missed);
 
         let sorted_missed_endpoint_configs = sort_by_runtime(&self.missed_endpoint_configurations);
-        let sorted_missed_openapi_configs = sort_by_runtime(&self.missed_openapi_configurations);
+        let sorted_missed_openapi_configs = sort_by_runtime(&modified_missed_openapi_configurations);
         for runtime in &config.runtimes {
             if config.only_account_for_merge {
                 println!("info: only taking endpoints from merge into account for evaluation accounting for endpoints")
@@ -85,6 +85,7 @@ impl Evaluation {
         if self.original_openapi_endpoint_count == 0 {
             return 1.0;
         }
+
         (self.original_openapi_endpoint_count - self.missed_endpoint_configurations.len()) as f32
             / (self.original_openapi_endpoint_count as f32)
     }

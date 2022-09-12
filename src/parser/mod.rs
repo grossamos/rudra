@@ -17,47 +17,53 @@ use crate::{
 use self::{json_parser::parse_json_doc, yaml_parser::parse_yaml_doc, http::fetch_openapi_endpoints_for_runtime};
 
 const OPENAPI_MOUNT_POINT: &str = "/repo";
+const PRE_MERGE_PATH_EXTENSION: &str = ".rudra.old";
 
 pub fn get_openapi_endpoint_configs(runtime: Arc<Runtime>) -> Result<Vec<EndpointConfiguration>, Error> {
     match runtime.openapi_source {
         OpenapiSource::Url(_) => fetch_openapi_endpoints_for_runtime(runtime),
-        OpenapiSource::Path(_) => parse_openapi_file(runtime, OPENAPI_MOUNT_POINT),
+        OpenapiSource::Path(_) => parse_openapi_file(runtime, OPENAPI_MOUNT_POINT, ""),
     }
 }
 
-pub fn get_relevant_endpoints_for_merge(runtime: Arc<Runtime>) -> Result<Vec<EndpointConfiguration>, Error> {
+pub fn get_pre_merge_openapi_endpoints(runtime: Arc<Runtime>) -> Result<Vec<EndpointConfiguration>, Error> {
     match runtime.openapi_source {
         OpenapiSource::Url(_) => fetch_openapi_endpoints_for_runtime(runtime),
-        OpenapiSource::Path(_) => parse_openapi_file(runtime, OPENAPI_MOUNT_POINT),
+        OpenapiSource::Path(_) => parse_openapi_file(runtime, OPENAPI_MOUNT_POINT, PRE_MERGE_PATH_EXTENSION),
     }
 }
 
-pub fn parse_openapi_file(runtime: Arc<Runtime>, mount_point: &str) -> Result<Vec<EndpointConfiguration>, Error> {
+pub fn parse_openapi_file(runtime: Arc<Runtime>, mount_point: &str, path_extension: &str) -> Result<Vec<EndpointConfiguration>, Error> {
     let openapi_path = match &runtime.openapi_source {
         OpenapiSource::Path(path) => path,
         OpenapiSource::Url(_) => return Err(Error::UnknownInternalError("open api path read on url".to_string())),
     };
-    if openapi_path.has_root() {
-        return Err(Error::OpenapiPathIsAbsolute(openapi_path.clone()))
-    }
-    let openapi_path: Box<Path> = Box::from(Path::new(mount_point).join(openapi_path));
-    let stripped_path_str = match openapi_path.to_str() {
-        Some(path_str) => match path_str.strip_suffix(".rudra.old") {
-            Some(path_str) => path_str,
-            None => path_str,
-        },
-        None => return Err(Error::ProblemOpeningFile(openapi_path)),
+
+    let mut buf = openapi_path.clone().into_path_buf();
+    let extension = match buf.extension() {
+        Some(extension) => match extension.to_str() {
+            Some(extension) => extension.to_string(),
+            None => return Err(Error::UnknownOpenApiFormat),
+        }
+        None => return Err(Error::UnknownOpenApiFormat),
     };
 
-    if stripped_path_str.ends_with("json") {
+    let full_extension = format!("{}{}", extension, path_extension);
+
+    buf.set_extension(full_extension);
+
+    let openapi_path = Path::new(mount_point).join(buf);
+
+
+    if extension == "json" {
         Ok(parse_json_doc(&read_file_to_string_or_err(
-            openapi_path.as_ref(),
-            Error::ProblemOpeningFile(openapi_path.clone()),
+            &openapi_path,
+            Error::ProblemOpeningFile(Box::from(openapi_path.as_path())),
         )?, runtime)?)
-    } else if stripped_path_str.ends_with("yaml") || stripped_path_str.ends_with("yml") {
+    } else if extension == "yaml" || extension == "yml" {
         Ok(parse_yaml_doc(&read_file_to_string_or_err(
-            openapi_path.as_ref(),
-            Error::ProblemOpeningFile(openapi_path.clone()),
+            &openapi_path,
+            Error::ProblemOpeningFile(Box::from(openapi_path.as_path())),
         )?, runtime)?)
     } else {
         Err(Error::UnknownOpenApiFormat)
@@ -68,14 +74,14 @@ pub fn parse_openapi_file(runtime: Arc<Runtime>, mount_point: &str) -> Result<Ve
 mod tests {
     use std::{path::Path, sync::Arc};
 
-    use crate::{config::OpenapiSource, parser::parse_openapi_file, utils::test::create_mock_runtime};
+    use crate::{config::OpenapiSource, parser::{parse_openapi_file, PRE_MERGE_PATH_EXTENSION}, utils::test::create_mock_runtime};
 
     #[test]
     fn parses_json_file_correctly() {
         let path = Path::new("./test/resource/swagger.json");
         let mut runtime = create_mock_runtime();
         runtime.openapi_source = OpenapiSource::Path(Box::from(path));
-        assert_eq!(parse_openapi_file(Arc::from(runtime), "./").unwrap().len(), 6);
+        assert_eq!(parse_openapi_file(Arc::from(runtime), "./", "").unwrap().len(), 6);
     }
 
     #[test]
@@ -83,7 +89,7 @@ mod tests {
         let path = Path::new("./test/resource/swagger.yaml");
         let mut runtime = create_mock_runtime();
         runtime.openapi_source = OpenapiSource::Path(Box::from(path));
-        assert_eq!(parse_openapi_file(Arc::from(runtime), "./").unwrap().len(), 6);
+        assert_eq!(parse_openapi_file(Arc::from(runtime), "./", "").unwrap().len(), 6);
     }
 
     #[test]
@@ -91,19 +97,19 @@ mod tests {
         let path = Path::new("/test");
         let mut runtime = create_mock_runtime();
         runtime.openapi_source = OpenapiSource::Path(Box::from(path));
-        assert!(parse_openapi_file(Arc::from(runtime), "./").is_err())
+        assert!(parse_openapi_file(Arc::from(runtime), "./", "").is_err())
     }
 
     #[test]
     fn parses_old_file_correctly() {
-        let path = Path::new("./test/resource/swagger.yaml.rudra.old");
+        let path = Path::new("./test/resource/swagger.yaml");
         let mut runtime = create_mock_runtime();
         runtime.openapi_source = OpenapiSource::Path(Box::from(path));
-        assert_eq!(parse_openapi_file(Arc::from(runtime), "./").unwrap().len(), 6);
+        assert_eq!(parse_openapi_file(Arc::from(runtime), "./", PRE_MERGE_PATH_EXTENSION).unwrap().len(), 6);
 
-        let path = Path::new("./test/resource/swagger.json.rudra.old");
+        let path = Path::new("./test/resource/swagger.json");
         let mut runtime = create_mock_runtime();
         runtime.openapi_source = OpenapiSource::Path(Box::from(path));
-        assert_eq!(parse_openapi_file(Arc::from(runtime), "./").unwrap().len(), 6);
+        assert_eq!(parse_openapi_file(Arc::from(runtime), "./", PRE_MERGE_PATH_EXTENSION).unwrap().len(), 6);
     }
 }
