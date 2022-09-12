@@ -31,7 +31,7 @@ impl Error {
     fn get_error_msg(&self) -> String {
         match self {
             Error::InvalidApplicationURL(err_msg) => format!("Invalid application URL provided: {}", err_msg),
-            Error::MissingConfiguration => format!("Your configuration is missing wither a mapping or an openapi location with it's respective application URL."),
+            Error::MissingConfiguration => format!("Your configuration is missing wither a mapping or an openapi source with it's respective application URL."),
             Error::ConflictingConfiguration => format!("You can either provide a mapping or openapi location, port and application URL. Providing both is not possible at this time."),
             Error::UnexpectedIOIssue(err_msg) => format!("An issue with IO occured: {}", err_msg),
             Error::ProblemOpeningFile(path) => format!("An issue opening the openapi ({:?}) file occured.", path),
