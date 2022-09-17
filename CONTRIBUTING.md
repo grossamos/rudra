@@ -64,7 +64,7 @@ cd website
 hugo server -w
 ```
 
-All content is managed as markdown files in the `website` directory.
+All content is managed as markdown files in the `website/content` directory.
 
 ## Submitting Issues
 - Please search for existing issues first, it is possible your issue has been reported already
