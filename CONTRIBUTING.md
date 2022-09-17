@@ -55,6 +55,17 @@ docker run --name=app --network=rudra -d --rm rudra-example
 docker run --env RUDRA_APP_BASE_URL=http://app:8080 --env RUDRA_OPENAPI_SOURCE=/swagger.yaml --volume $PWD/test/resource/swagger.yaml:/swagger.yaml -p 13750:80 --network rudra --name rudra --rm --env RUDRA_DEBUG=0 --env RUDRA_ACCOUNT_FOR_SECURITY=1 rudra
 ```
 
+### Working on the Website
+Rudra uses [hugo](https://gohugo.io/) for its website.
+
+After downloading hugo the website can be started by running:
+```bash
+cd website
+hugo server -w
+```
+
+All content is managed as markdown files in the `website` directory.
+
 ## Submitting Issues
 - Please search for existing issues first, it is possible your issue has been reported already
 - Titles of issues should have the following structure: ``<Subsystem>: <Description of issue>``
