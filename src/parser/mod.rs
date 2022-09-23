@@ -9,7 +9,7 @@ use std::{sync::Arc, path::Path};
 pub use nginx_parser::parse_nginx_access_log;
 
 use crate::{
-    config::{OpenapiSource, Runtime},
+    config::{OpenapiSource, Runtime, RudraConfig},
     models::EndpointConfiguration,
     utils::{read_file_to_string_or_err, Error},
 };
@@ -19,7 +19,19 @@ use self::{json_parser::parse_json_doc, yaml_parser::parse_yaml_doc, http::fetch
 const OPENAPI_MOUNT_POINT: &str = "/repo";
 const PRE_MERGE_PATH_EXTENSION: &str = ".rudra.old";
 
-pub fn get_openapi_endpoint_configs(runtime: Arc<Runtime>) -> Result<Vec<EndpointConfiguration>, Error> {
+pub fn get_openapi_endpoint_configs(config: &RudraConfig) -> Result<Vec<EndpointConfiguration>, Error> {
+    let mut openapi_endpoints = vec![];
+    for runtime in &config.runtimes {
+        let mut endpoints = match get_runtime_openapi_endpoint_configs(runtime.clone()) {
+            Ok(endpoints) => endpoints,
+            Err(err) => return Err(err),
+        };
+        openapi_endpoints.append(&mut endpoints);
+    }
+    Ok(openapi_endpoints)
+}
+
+pub fn get_runtime_openapi_endpoint_configs(runtime: Arc<Runtime>) -> Result<Vec<EndpointConfiguration>, Error> {
     match runtime.openapi_source {
         OpenapiSource::Url(_) => fetch_openapi_endpoints_for_runtime(runtime),
         OpenapiSource::Path(_) => parse_openapi_file(runtime, OPENAPI_MOUNT_POINT, ""),

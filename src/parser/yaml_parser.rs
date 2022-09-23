@@ -66,18 +66,18 @@ pub fn parse_yaml_doc(
             if method_infos.get(&Yaml::from_str("security")).is_some() {
                 endpoints.push(EndpointConfiguration::new(
                     method.clone(),
-                    path.clone(),
+                    &path,
                     401,
                     runtime.clone(),
                     true
-                ));
+                )?);
                 endpoints.push(EndpointConfiguration::new(
                     method.clone(),
-                    path.clone(),
+                    &path,
                     403,
                     runtime.clone(),
                     true
-                ));
+                )?);
             }
 
             for status_key in statuses.keys() {
@@ -91,11 +91,11 @@ pub fn parse_yaml_doc(
                 };
                 endpoints.push(EndpointConfiguration::new(
                     method.clone(),
-                    path.clone(),
+                    &path,
                     status_code,
                     runtime.clone(),
                     false
-                ));
+                )?);
             }
         }
     }
@@ -118,10 +118,10 @@ fn retrive_value_as_hash_map<'a>(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{sync::Arc, str::FromStr};
 
     use crate::{
-        models::Method, parser::yaml_parser::parse_yaml_doc, utils::test::create_mock_runtime,
+        models::{Method, OpenapiPath}, parser::yaml_parser::parse_yaml_doc, utils::test::create_mock_runtime,
     };
 
     const YAML_STRING: &str = "
@@ -161,13 +161,13 @@ paths:
             parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
-                .any(|x| x.path == "/")
+                .any(|x| x.path == OpenapiPath::from_str("/").unwrap())
         );
         assert!(
             parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
-                .any(|x| x.path == "/test")
+                .any(|x| x.path == OpenapiPath::from_str("/test").unwrap())
         );
     }
 
@@ -215,7 +215,7 @@ paths:
             parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
-                .filter(|x| x.method == Method::GET && x.status_code == 401 && x.path == "/")
+                .filter(|x| x.method == Method::GET && x.status_code == 401 && x.path == OpenapiPath::from_str("/").unwrap())
                 .count(),
             1
         );
@@ -223,7 +223,7 @@ paths:
             parse_yaml_doc(YAML_STRING, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
-                .filter(|x| x.method == Method::GET && x.status_code == 403 && x.path == "/")
+                .filter(|x| x.method == Method::GET && x.status_code == 403 && x.path == OpenapiPath::from_str("/").unwrap())
                 .count(),
             1
         );

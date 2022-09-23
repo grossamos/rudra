@@ -102,11 +102,11 @@ fn parse_nginx_line(runtimes: &Vec<Arc<Runtime>>, line: &str) -> Result<Endpoint
 
     Ok(EndpointConfiguration::new(
         method,
-        path,
+        &path,
         status,
         find_runtime_by_port(runtimes, port)?,
         false
-    ))
+    )?)
 }
 
 fn find_runtime_by_port(runtimes: &Vec<Arc<Runtime>>, port: u16) -> Result<Arc<Runtime>, Error> {
@@ -126,7 +126,7 @@ mod test {
 
     use crate::{
         config::{OpenapiSource, Runtime},
-        models::Method,
+        models::{Method, OpenapiPath},
         parser::nginx_parser::{parse_access_log, parse_nginx_line},
     };
 
@@ -185,19 +185,19 @@ mod test {
             parse_nginx_line(&generate_runtimes(), "[11/Jul/2022:08:50:03 +0000] \"GET /weather HTTP/1.1\" 200 8080")
                 .unwrap()
                 .path,
-            String::from("/weather")
+            OpenapiPath::from_str("/weather").unwrap(),
         );
         assert_eq!(
             parse_nginx_line(&generate_runtimes(), "[11/Jul/2022:08:52:45 +0000] \"GET /usus HTTP/1.1\" 404 8080")
                 .unwrap()
                 .path,
-            String::from("/usus")
+            OpenapiPath::from_str("/usus").unwrap(),
         );
         assert_eq!(
             parse_nginx_line(&generate_runtimes(), "[11/Jul/2022:08:52:45 +0000] \"GET / HTTP/1.1\" 404 8080")
                 .unwrap()
                 .path,
-            String::from("/")
+            OpenapiPath::from_str("/").unwrap(),
         );
     }
 

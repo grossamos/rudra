@@ -32,9 +32,9 @@ mod tests {
         let runtime_b = Arc::from(runtime_b);
 
         let endpoint_configs = vec![
-            EndpointConfiguration::new(Method::GET, "/".to_string(), 200, runtime_a.clone(), false),
-            EndpointConfiguration::new(Method::GET, "/".to_string(), 502, runtime_a.clone(), false),
-            EndpointConfiguration::new(Method::GET, "/".to_string(), 404, runtime_b.clone(), false),
+            EndpointConfiguration::new(Method::GET, "/", 200, runtime_a.clone(), false).unwrap(),
+            EndpointConfiguration::new(Method::GET, "/", 502, runtime_a.clone(), false).unwrap(),
+            EndpointConfiguration::new(Method::GET, "/", 404, runtime_b.clone(), false).unwrap(),
         ];
 
         let sorted = sort_by_runtime(&endpoint_configs);

@@ -55,18 +55,18 @@ pub fn parse_json_doc(
             if !&method_json["security"].is_null() {
                 endpoints.push(EndpointConfiguration::new(
                     method.clone(),
-                    path.clone(),
+                    &path,
                     401,
                     runtime.clone(),
                     false
-                ));
+                )?);
                 endpoints.push(EndpointConfiguration::new(
                     method.clone(),
-                    path.clone(),
+                    &path,
                     403,
                     runtime.clone(),
                     false
-                ));
+                )?);
             }
 
             for response in responses.entries() {
@@ -76,11 +76,11 @@ pub fn parse_json_doc(
                 };
                 endpoints.push(EndpointConfiguration::new(
                     method.clone(),
-                    path.clone(),
+                    &path,
                     status_code,
                     runtime.clone(),
                     false
-                ))
+                )?)
             }
         }
     }
@@ -104,10 +104,10 @@ fn get_methods_from_path(path_json: &JsonValue) -> Result<Vec<(Method, &JsonValu
 #[cfg(test)]
 mod test {
 
-    use std::sync::Arc;
+    use std::{sync::Arc, str::FromStr};
 
     use crate::{
-        models::Method, parser::json_parser::parse_json_doc, utils::test::create_mock_runtime,
+        models::{Method, OpenapiPath}, parser::json_parser::parse_json_doc, utils::test::create_mock_runtime,
     };
 
     const JSON_STRING: &str = r#"
@@ -197,13 +197,13 @@ mod test {
             parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
-                .any(|x| x.path == "/")
+                .any(|x| x.path == OpenapiPath::from_str("/").unwrap())
         );
         assert!(
             parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
-                .any(|x| x.path == "/test")
+                .any(|x| x.path == OpenapiPath::from_str("/test").unwrap())
         );
     }
 
@@ -235,7 +235,7 @@ mod test {
             parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
-                .filter(|x| x.method == Method::GET && x.status_code == 401 && x.path == "/")
+                .filter(|x| x.method == Method::GET && x.status_code == 401 && x.path == OpenapiPath::from_str("/").unwrap())
                 .count(),
             1
         );
@@ -243,7 +243,7 @@ mod test {
             parse_json_doc(JSON_STRING, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
-                .filter(|x| x.method == Method::GET && x.status_code == 403 && x.path == "/")
+                .filter(|x| x.method == Method::GET && x.status_code == 403 && x.path == OpenapiPath::from_str("/").unwrap())
                 .count(),
             1
         );
@@ -287,13 +287,13 @@ mod test {
             parse_json_doc(JSON_STRING_DIFF_BASEPATH, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
-                .any(|x| x.path == "/foo")
+                .any(|x| x.path == OpenapiPath::from_str("/foo").unwrap())
         );
         assert!(
             parse_json_doc(JSON_STRING_DIFF_BASEPATH, Arc::from(create_mock_runtime()))
                 .unwrap()
                 .iter()
-                .any(|x| x.path == "/foo/bar")
+                .any(|x| x.path == OpenapiPath::from_str("/foo/bar").unwrap())
         );
     }
 }
