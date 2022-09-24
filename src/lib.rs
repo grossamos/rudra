@@ -1,4 +1,4 @@
-use std::process::{Command, Stdio};
+use std::{process::{Command, Stdio}, collections::HashSet};
 
 use config::{configure_nginx, RudraConfig};
 use evaluator::evaluate;
@@ -89,6 +89,6 @@ pub fn run_eval(config: &RudraConfig, openapi_endpoints: Vec<EndpointConfigurati
         Err(_) => print_error_and_exit("An unexpected error occured while parsing the nginx logs"),
     };
 
-    let _evaluation = evaluate(openapi_endpoints, pre_merge_endpoints, nginx_endpoints);
+    let _evaluation = evaluate(&openapi_endpoints, &pre_merge_endpoints, &nginx_endpoints, &HashSet::new());
 }
 

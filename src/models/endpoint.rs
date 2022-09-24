@@ -30,51 +30,51 @@ impl EndpointConfiguration {
         })
     }
 
-    pub fn incompases_endpoint(&self, other: EndpointConfiguration) -> bool {
-        // if other is not complete
-        // i as index of component
-        // j as index fro string
-        // fixed component:
-        // -> j to j + component.len() == component
-        //
-        // variable component:
-        // -> is last: increase j until first /
-        // -> is not last: increase j until first / or first occurence of next fixed
-        // -> yes: fixed at other starts with same, if equally long increase index, if not add to
-        //
-        // if j is at end of string -> true
+    pub fn incompases_endpoint(&self, other: &EndpointConfiguration) -> bool {
+        self.method == other.method
+            && self.status_code == other.status_code
+            && self.runtime == other.runtime
+            && self.path.incompases_openapi_path(&other.path)
 
-        if self.method != other.method || self.status_code != other.status_code || self.runtime != other.runtime {
-            return false;
-        }
+    }
+}
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct OpenapiPath {
+    components: Vec<OpenapiPathComponent>,
+    original_source: String,
+}
+
+impl OpenapiPath {
+    pub fn incompases_openapi_path(&self, other: &OpenapiPath) -> bool {
         let mut parse_index = 0;
-        let other_path = other.path.original_source;
+        let other_as_str = &other.original_source;
 
-        for component_index in 0..self.path.components.len() {
-            let component = &self.path.components[component_index];
+        for component_index in 0..self.components.len() {
+            let component = &self.components[component_index];
             match component {
                 OpenapiPathComponent::Fixed(fixed) => {
-                    if fixed.len() + parse_index > other_path.len()
-                        || fixed != &other_path[parse_index..parse_index + fixed.len()]
+                    if fixed.len() + parse_index > other_as_str.len()
+                        || fixed != &other_as_str[parse_index..parse_index + fixed.len()]
                     {
                         return false;
                     }
                     parse_index += fixed.len();
                 }
                 OpenapiPathComponent::Variable => {
-                    let next_string = match self.path.components.get(component_index + 1) {
+                    const EMPTY_NEXT_STRING: &str = "";
+                    let next_string = match self.components.get(component_index + 1) {
                         Some(next_component) => match next_component {
                             OpenapiPathComponent::Fixed(original_source) => &original_source,
-                            OpenapiPathComponent::Variable => "",
+                            OpenapiPathComponent::Variable => EMPTY_NEXT_STRING,
                         },
-                        None => "",
+                        None => EMPTY_NEXT_STRING,
                     };
 
-                    while parse_index < other_path.len() {
-                        if &other_path[parse_index..parse_index + 1] == "/"
-                            || (other_path.len() > next_string.len() + parse_index
-                                && &other_path[parse_index..parse_index + next_string.len()]
+                    while parse_index < other_as_str.len() {
+                        if &other_as_str[parse_index..parse_index + 1] == "/"
+                            ||(next_string != EMPTY_NEXT_STRING && other_as_str.len() > next_string.len() + parse_index
+                                && &other_as_str[parse_index..parse_index + next_string.len()]
                                     == next_string)
                         {
                             break;
@@ -84,15 +84,11 @@ impl EndpointConfiguration {
                 }
             }
         }
-        
-        parse_index == other_path.len()
-    }
-}
+        println!("{} {}", parse_index, other_as_str.len());
+        println!("{}", other_as_str);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OpenapiPath {
-    components: Vec<OpenapiPathComponent>,
-    original_source: String,
+        parse_index == other_as_str.len()
+    }
 }
 
 impl Display for OpenapiPath {
@@ -147,7 +143,7 @@ impl FromStr for OpenapiPath {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Hash)]
 pub enum OpenapiPathComponent {
     Fixed(String),
     Variable,
@@ -221,30 +217,20 @@ mod tests {
         assert_eq!(expected, got);
     }
 
-    fn get_encopmas_result_from_str(a: &str, b: &str) -> bool {
-        let endpoint_cfg_a = EndpointConfiguration::new(
-            Method::GET,
-            a,
-            200,
-            Arc::from(create_mock_runtime()),
-            false,
-        )
-        .unwrap();
-        let endpoint_cfg_b = EndpointConfiguration::new(
-            Method::GET,
-            b,
-            200,
-            Arc::from(create_mock_runtime()),
-            false,
-        )
-        .unwrap();
+    fn test_incompas_path_with_string(a: &str, b: &str, expected: bool) {
+        assert!(get_path_string_incompasing_bool(a, b) == expected); 
+    }
 
-        endpoint_cfg_a.incompases_endpoint(endpoint_cfg_b)
+    fn get_path_string_incompasing_bool(a: &str, b: &str) -> bool {
+        let path_a = OpenapiPath::from_str(a).unwrap();
+        let path_b = OpenapiPath::from_str(b).unwrap();
+
+        path_a.incompases_openapi_path(&path_b)
     }
 
     #[test]
     fn fixed_endpoints_encompas_eachother() {
-        assert!(get_encopmas_result_from_str("/foo/bar", "/foo/bar"));
+        test_incompas_path_with_string("/foo/bar", "/foo/bar", true);
     }
 
     #[test]
@@ -266,7 +252,7 @@ mod tests {
         )
         .unwrap();
 
-        assert!(!endpoint_cfg_a.incompases_endpoint(endpoint_cfg_b));
+        assert!(!endpoint_cfg_a.incompases_endpoint(&endpoint_cfg_b));
     }
 
     #[test]
@@ -288,7 +274,7 @@ mod tests {
         )
         .unwrap();
 
-        assert!(!endpoint_cfg_a.incompases_endpoint(endpoint_cfg_b));
+        assert!(!endpoint_cfg_a.incompases_endpoint(&endpoint_cfg_b));
     }
 
     #[test]
@@ -310,22 +296,35 @@ mod tests {
         )
         .unwrap();
 
-        assert!(!endpoint_cfg_a.incompases_endpoint(endpoint_cfg_b));
+        assert!(!endpoint_cfg_a.incompases_endpoint(&endpoint_cfg_b));
     }
 
     #[test]
     fn dynamic_endpoints_encompas_eachother() {
-        assert!(get_encopmas_result_from_str("/foo/{bar}/moo", "/foo/bar/moo"));
+        test_incompas_path_with_string(
+            "/foo/{bar}/moo",
+            "/foo/bar/moo",
+            true
+        );
     }
 
     #[test]
     fn different_endpoints_dont_encompas_eachother() {
-        assert!(!get_encopmas_result_from_str("/foo/{bar}", "/foo/bar/moo"));
-        assert!(!get_encopmas_result_from_str("/foo/{bar}/moo", "/foo/bar"));
+        test_incompas_path_with_string("/foo/{bar}", "/foo/bar/moo", false);
+        test_incompas_path_with_string("/foo/{bar}/moo", "/foo/bar", false);
     }
 
     #[test]
     fn same_variable_endpoints_encompas_eachother() {
-        assert!(get_encopmas_result_from_str("/foo/{bar}/moo", "/foo/{moo}/moo"));
+        test_incompas_path_with_string(
+            "/foo/{bar}/moo",
+            "/foo/{moo}/moo",
+            true,
+        );
+    }
+
+    #[test]
+    fn matches_numerics_as_vairable_in_path() {
+        test_incompas_path_with_string("/foo/{bar}", "/foo/69", true);
     }
 }
