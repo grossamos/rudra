@@ -5,6 +5,7 @@ pub struct Grouping {
     methods: Vec<Method>,
     status: Vec<u16>,
     path: OpenapiPath,
+    is_ignore_group: bool,
 }
 
 impl Grouping {
@@ -12,6 +13,10 @@ impl Grouping {
         self.methods.contains(&endpoint.method)
             && self.status.contains(&endpoint.status_code)
             && self.path.incompases_openapi_path(&endpoint.path)
+    }
+
+    pub fn new(methods: Vec<Method>, status: Vec<u16>, path: OpenapiPath, is_ignore_group: bool) -> Grouping {
+        Grouping { methods, status, path, is_ignore_group }
     }
 }
 
@@ -29,6 +34,7 @@ mod tests {
             methods: vec![Method::GET],
             status: vec![200],
             path: OpenapiPath::from_str("/foo/{bar}").unwrap(),
+            is_ignore_group: false,
         };
         let endpoint= EndpointConfiguration::new(
             Method::GET,
@@ -48,6 +54,7 @@ mod tests {
             methods: vec![Method::POST],
             status: vec![418],
             path: OpenapiPath::from_str("/foo/{bar}").unwrap(),
+            is_ignore_group: false,
         };
         let endpoint= EndpointConfiguration::new(
             Method::GET,
@@ -67,6 +74,7 @@ mod tests {
             methods: vec![Method::POST],
             status: vec![200],
             path: OpenapiPath::from_str("/foo/{bar}").unwrap(),
+            is_ignore_group: false,
         };
         let endpoint= EndpointConfiguration::new(
             Method::GET,

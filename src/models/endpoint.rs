@@ -4,7 +4,7 @@ use crate::{config::Runtime, utils::Error};
 
 use super::misc::Method;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct EndpointConfiguration {
     pub method: Method,
     pub path: OpenapiPath,
@@ -84,8 +84,6 @@ impl OpenapiPath {
                 }
             }
         }
-        println!("{} {}", parse_index, other_as_str.len());
-        println!("{}", other_as_str);
 
         parse_index == other_as_str.len()
     }
