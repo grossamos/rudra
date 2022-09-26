@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::{path::Path, sync::Arc, collections::HashSet};
 
 use url::Url;
 
@@ -6,6 +6,8 @@ mod environment;
 mod nginx;
 
 pub use nginx::configure_nginx;
+
+use crate::models::Grouping;
 
 #[derive(Debug)]
 pub struct RudraConfig {
@@ -16,6 +18,7 @@ pub struct RudraConfig {
     pub runtimes: Vec<Arc<Runtime>>,
     pub is_merge: bool,
     pub only_account_for_merge: bool,
+    pub groupings: HashSet<Grouping>,
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]

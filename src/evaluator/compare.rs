@@ -5,12 +5,12 @@ use std::{
 
 use crate::models::{EndpointConfiguration, Grouping};
 
-pub fn evaluate(
-    openapi_endpoints: &Vec<EndpointConfiguration>,
+pub fn evaluate<'a>(
+    openapi_endpoints: &'a Vec<EndpointConfiguration>,
     pre_merge_endpoints: &Option<Vec<EndpointConfiguration>>,
     nginx_endpoints: &Vec<EndpointConfiguration>,
     groupings: &HashSet<Grouping>,
-) -> Evaluation {
+) -> Evaluation<'a> {
     let mut grouping_endpoints: HashMap<&Grouping, Vec<RefCell<(&EndpointConfiguration, bool)>>> =
         HashMap::new();
     for grouping in groupings {
@@ -28,7 +28,9 @@ pub fn evaluate(
                 if grouping.1.len() >= 1 && grouping.1[0].borrow().1 {
                     grouping.1.push(RefCell::new((openapi_endpoint, true)));
                 } else {
-                    if endpoint_incompases_any(openapi_endpoint, nginx_endpoints) {
+                    if grouping.0.is_ignore_group {
+                        grouping.1.push(RefCell::new((openapi_endpoint, true)));
+                    } else if endpoint_incompases_any(openapi_endpoint, nginx_endpoints) {
                         for endpoint in grouping.1.iter_mut() {
                             let mut endpoint = endpoint.borrow_mut();
                             endpoint.1 = true;
@@ -68,10 +70,12 @@ pub fn evaluate(
 
     let has_gateway_issues = has_gateway_issues(nginx_endpoints);
 
+    let endpoints_not_covered = unmatched_endpoints.iter().map(|x| x.borrow().0).collect();
+
     Evaluation {
         has_gateway_issues,
         test_coverage,
-        endpoints_not_covered: vec![],
+        endpoints_not_covered,
     }
 }
 
@@ -118,14 +122,17 @@ fn add_endpoint_as_missed<'a>(
 }
 
 fn has_gateway_issues(nginx_endpoints: &Vec<EndpointConfiguration>) -> bool {
-    let gateway_issues = nginx_endpoints.iter().filter(|x| x.status_code == 502).count();
+    let gateway_issues = nginx_endpoints
+        .iter()
+        .filter(|x| x.status_code == 502)
+        .count();
     gateway_issues > 40 || gateway_issues > nginx_endpoints.len() / 4
 }
 
-pub struct Evaluation {
-    has_gateway_issues: bool,
-    test_coverage: f32,
-    endpoints_not_covered: Vec<EndpointConfiguration>,
+pub struct Evaluation<'a> {
+    pub has_gateway_issues: bool,
+    pub test_coverage: f32,
+    pub endpoints_not_covered: Vec<&'a EndpointConfiguration>,
     // TODO add the following field
     //endpoints_missing_in_spec: Vec<EndpointConfiguration>,
 }
@@ -141,7 +148,7 @@ mod tests {
         utils::test::create_mock_runtime,
     };
 
-    use super::{endpoint_incompases_any, evaluate};
+    use super::{endpoint_incompases_any, evaluate, has_gateway_issues};
 
     fn create_endpoint_a() -> EndpointConfiguration {
         EndpointConfiguration::new(
@@ -258,5 +265,19 @@ mod tests {
             &endpoint,
             &possibly_incompased_endpoints
         ))
+    }
+
+    #[test]
+    fn correctly_asserts_gateway_issues() {
+        let nginx_endpoints = vec![EndpointConfiguration::new(
+            Method::GET,
+            "/",
+            502,
+            Arc::new(create_mock_runtime()),
+            false,
+        )
+        .unwrap()];
+
+        assert!(has_gateway_issues(&nginx_endpoints));
     }
 }

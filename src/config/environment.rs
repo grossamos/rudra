@@ -1,4 +1,4 @@
-use crate::utils::Error;
+use crate::{utils::Error, models::{Grouping, OpenapiPath, Method}};
 use float_eq::float_eq;
 use std::{collections::{HashMap, HashSet}, env, path::Path, str::FromStr, sync::{Arc, RwLock}};
 use url::Url;
@@ -16,11 +16,12 @@ const ENV_VAR_PORT: &str = "RUDRA_PORT";
 const ENV_VAR_MAPPING: &str = "RUDRA_MAPPING";
 const ENV_VAR_IS_MERGE: &str = "RUDRA_IS_MERGE";
 const ENV_VAR_ONLY_ACCOUNT_MERGE: &str = "RUDRA_ONLY_ACCOUNT_MERGE";
+const ENV_VAR_GROUPINGS: &str = "RUDRA_GROUPINGS";
 
 const DEFAULT_TEST_COVERAGE: f32 = 0.7;
 const DEFAULT_PORT: u16 = 13750;
 
-const MAPPING_SEPERATOR: &str = "RUDRA_LINE_SEPERATOR";
+const LIST_SEPERATOR: &str = "RUDRA_LINE_SEPERATOR";
 const MAPPING_SUBDELIMITER: &str = ";";
 
 lazy_static! {
@@ -54,6 +55,10 @@ impl RudraConfig {
         };
         let is_merge = get_bool_env_var(ENV_VAR_IS_MERGE, env_vars);
         let only_account_for_merge = get_bool_env_var(ENV_VAR_ONLY_ACCOUNT_MERGE, env_vars);
+        let groupings = match env_vars.get(ENV_VAR_GROUPINGS) {
+            Some(grouping_str) => parse_grouping(grouping_str)?,
+            None => HashSet::new(),
+        };
 
         let runtimes = if !key_exists_and_is_not_empty(ENV_VAR_MAPPING, env_vars) {
             let openapi_source_str = match env_vars.get(ENV_VAR_OPENAPI_SOURCE) {
@@ -90,6 +95,7 @@ impl RudraConfig {
             return Err(Error::UnknownInternalError("debug double write".to_string()))
         }
 
+
         Ok(RudraConfig {
             debug,
             security_accounts_for_forbidden,
@@ -98,6 +104,7 @@ impl RudraConfig {
             runtimes,
             is_merge,
             only_account_for_merge,
+            groupings,
         })
     }
 
@@ -125,7 +132,7 @@ fn key_exists_and_is_not_empty(key: &str, env_vars: &HashMap<String, String>) ->
 fn parse_complex_mapping(mapping_str: &str) -> Result<Vec<Arc<Runtime>>, Error> {
     let mut runtimes = vec![];
 
-    for line in mapping_str.split(MAPPING_SEPERATOR) {
+    for line in mapping_str.split(LIST_SEPERATOR) {
         // ignore empty lines that might consist out of tabs or spaces
         if line.trim() == "" {
             continue;
@@ -150,6 +157,26 @@ fn parse_complex_mapping(mapping_str: &str) -> Result<Vec<Arc<Runtime>>, Error> 
         return Err(Error::MappingDuplicatePorts);
     }
     Ok(runtimes)
+}
+
+fn parse_grouping(grouping_str: &str) -> Result<HashSet<Grouping>, Error> {
+    let mut groupings = HashSet::new();
+
+    for line in grouping_str.split(LIST_SEPERATOR) {
+        if line.trim() == "" {
+            continue;
+        }
+
+        let index = 0;
+        let (path_str, index) = parse_untill_mapping_subdelimiter(index, &line)?;
+        let (methods_str, index) = parse_untill_mapping_subdelimiter(index, &line)?;
+        let (status_str, index) = parse_untill_mapping_subdelimiter(index, &line)?;
+        let (is_ignore_group_str, _) = parse_untill_mapping_subdelimiter(index, &line)?;
+        
+        groupings.insert(parse_grouping_strings(path_str, methods_str, status_str, is_ignore_group_str)?);
+    }
+
+    Ok(groupings)
 }
 
 fn parse_untill_mapping_subdelimiter<'a>(index: usize, base: &'a str) -> Result<(&'a str, usize), Error> {
@@ -215,10 +242,15 @@ fn parse_runtime(openapi_source_str: &str, app_base_url_str: &str, port_str: Opt
 fn get_bool_env_var(key: &str, env_vars: &HashMap<String, String>) -> bool {
     match env_vars.get(key) {
         Some(bool_var) => {
-            bool_var.as_str() != "0" && bool_var.as_str() != "" && bool_var.as_str() != "false"
+            parse_bool(&bool_var)
         }
         None => false,
     }
+}
+
+fn parse_bool(bool_str: &str) -> bool {
+    // the "nope" is just a fun easter egg
+    bool_str != "0" && bool_str != "" && bool_str != "false" && bool_str != "nope"
 }
 
 fn translate_test_coverage(coverage_str: &str) -> Result<f32, Error> {
@@ -248,6 +280,29 @@ fn translate_test_coverage(coverage_str: &str) -> Result<f32, Error> {
     } else {
         Ok(coverage)
     }
+}
+
+fn parse_grouping_strings(path_str: &str, methods_str: &str, status_str: &str, is_ignore_group_str: &str) -> Result<Grouping, Error> {
+    let path = OpenapiPath::from_str(path_str.trim())?;
+    let mut methods = vec![];
+    for method_str in methods_str.split(",") {
+        let method = match Method::from_str(method_str.trim()) {
+            Some(method) => method,
+            None => return Err(Error::InvalidMethodString(method_str.to_string())),
+        };
+        methods.push(method);
+    };
+    
+    let mut status = vec![];
+    for single_status_str in status_str.split(",") {
+        let single_status = match single_status_str.trim().parse() {
+            Ok(single_status) => single_status,
+            Err(_) => return Err(Error::InvalidStatusCode(single_status_str.to_string())),
+        };
+        status.push(single_status);
+    }
+    let is_ignore_group = parse_bool(is_ignore_group_str.trim());
+    Ok(Grouping::new(methods, status, path, is_ignore_group))
 }
 
 #[cfg(test)]

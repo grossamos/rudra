@@ -5,7 +5,7 @@ pub struct Grouping {
     methods: Vec<Method>,
     status: Vec<u16>,
     path: OpenapiPath,
-    is_ignore_group: bool,
+    pub is_ignore_group: bool,
 }
 
 impl Grouping {
