@@ -4,8 +4,6 @@ It allows teams to set and enforce coverage levels for integration tests in CI/C
 
 Contributions to the project are allways welcome, please consult [CONTIBUTING.md](./CONTRIBUTING.md) for more information.
 
-**NOTE: rudra is still under development and not yet production ready**
-
 ## Quickstart
 #### Step 1: Point your integration tests to rudra
 First point your integration tests to the Rudra reverse proxy.
@@ -69,6 +67,7 @@ port                             | Port for rudra to listen on (default `13750`)
 services                         | Configuartion for multiple services, conflicts with port, openapi-source, instance-url | `instance-url; openapi-source; port;\n` | see [here](#multiple-services)
 stage                            | Specifies which stage to use | `preperation`, `evaluation` | `preperation`
 test-coverage                    | Coverage to enforce in evaluation stage (default `70%`) | Percentage or float | `0.75`, `75%`
+groupings                        | Allows for certain configruations to be grouped together or ignored | `path; method; status_code; ignored;\n` | see [here](#groupings)
 
 ## Examples
 
@@ -101,4 +100,19 @@ services: |
     http://localhost:8080; docs/swagger1.yaml; 13751;
     http://localhost:8443; docs/swagger2.yaml; 13752;
 ```
+
+### Groupings
+Somtimes endpoints reuse the same logic and shouldn't need to be tested twice.
+Other times some configurations simply can't get tested and need to be ignored from a perspective of test coverage.
+The groupings feature allows you to define groups.
+A group only requires a single test to make all endpoints count as tested.
+If the `ignored` flag is set, they are assumed to be tested and are taken out of consideration.
+
+An example could look as follows:
+```yaml
+groupings: |
+    /foo/bar; GET; 200; true;
+    /foo/{bar}/moo; GET, POST; 200, 418; false;
+```
+
 
