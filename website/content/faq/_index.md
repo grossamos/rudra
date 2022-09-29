@@ -7,7 +7,7 @@ description = "Asked and answered"
 ## Why does Rudra require OpenAPI?
 
 Rudra requires requires an OpenAPI spec for endpoint discovery.
-Without one, we could not reliably determine which endpoints exist in your application.
+Without one, it could not reliably determine which endpoints exist in your application.
 Since this information is nessicary for generting accurate test coverage, rudra requires an OpenAPI spec.
 
 ## Is rudra compatible with my language/web-framework?
