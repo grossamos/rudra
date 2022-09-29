@@ -34,7 +34,7 @@ Optionally set a desired `test-coverage` for your endpoints.
 
 ```yaml
   - name: init rudra
-    uses: grossamos/rudra@v0.1.2
+    uses: grossamos/rudra@v0.1.3
     with:
       stage: "preperation"
       openapi-source: "docs/swagger.json"
@@ -50,7 +50,7 @@ The stage will evaluate any data observed during the testing phase and fail if t
 Rudra shouldn't be configured in this stage.
 
 ```yaml
-  - uses: grossamos/rudra@v0.1.2
+  - uses: grossamos/rudra@v0.1.3
     name: eval rudra
     with:
       stage: "evaluation"

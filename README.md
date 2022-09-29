@@ -22,7 +22,7 @@ The OpenAPI Spec can also be provided via a link.
 
 ```yaml
   - name: init rudra
-    uses: grossamos/rudra@v0.1.2
+    uses: grossamos/rudra@v0.1.3
     with:
       stage: "preperation"
       openapi-source: "docs/swagger.json"
@@ -40,7 +40,7 @@ Optionally set a desired `test-coverage` for your endpoints.
 Place the rudra evaluation stage somewhere after your integration tests have run.
 
 ```yaml
-  - uses: grossamos/rudra@v0.1.2
+  - uses: grossamos/rudra@v0.1.3
     name: eval rudra
     with:
       stage: "evaluation"
@@ -77,7 +77,7 @@ It uses a go service and postman to serve as an example of how to integrate rudr
 
 The pipeline in rudra-example is structured as follows:
 ```yaml
-  - uses: grossamos/rudra@v0.1.2
+  - uses: grossamos/rudra@v0.1.3
     name: init rudra
     with:
       stage: "preperation"
@@ -87,7 +87,7 @@ The pipeline in rudra-example is structured as follows:
       test-coverage: "90%"
       only-account-for-pr: true
 # ... Integration tests ...
-  - uses: grossamos/rudra@v0.1.2
+  - uses: grossamos/rudra@v0.1.3
     name: eval rudra
     with:
       stage: "evaluation"

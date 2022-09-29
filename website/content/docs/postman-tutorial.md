@@ -35,7 +35,7 @@ Optionally set a desired `test-coverage` for your endpoints.
 
 ```yaml
   - name: init rudra
-    uses: grossamos/rudra@v0.1.2
+    uses: grossamos/rudra@v0.1.3
     with:
       stage: "preperation"
       openapi-source: "docs/swagger.json"
@@ -63,7 +63,7 @@ This stage will evaluate your tests after newman and fail if the configured test
 No configuration should be added to this stage.
 
 ```yaml
-  - uses: grossamos/rudra@v0.1.2
+  - uses: grossamos/rudra@v0.1.3
     name: eval rudra
     with:
       stage: "evaluation"
@@ -93,7 +93,7 @@ jobs:
       - run: nix build .
       - run: nix run . &
       # Preparing Rudra
-      - uses: grossamos/rudra@v0.1.2
+      - uses: grossamos/rudra@v0.1.3
         name: init rudra
         with:
           stage: "preperation"
@@ -107,7 +107,7 @@ jobs:
           collection: tests/rudra-example.postman_collection.json
           environment: tests/rudra-example-ci.postman_environment.json
       # Evaluating test coverage
-      - uses: grossamos/rudra@v0.1.2
+      - uses: grossamos/rudra@v0.1.3
         name: eval rudra
         with:
           stage: "evaluation"
